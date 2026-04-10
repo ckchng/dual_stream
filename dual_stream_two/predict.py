@@ -30,7 +30,7 @@ from matplotlib import pyplot as plt
 from tools.eval.full_frame_line_eval import line_intersection_check, line_angle_degrees
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..', 'data_generation'))
-from utils import _make_params, compute_rt_map
+from ht_utils import _make_params, compute_rt_map
 
 # -----------------------------------------------------------------------------
 # CONFIG: set USE_ARGPARSE = True to use the hardcoded parameters below.
@@ -185,7 +185,7 @@ def tile_image(
             rt_map_max = rt_map.max()
             if rt_map_max > 0:
                 rt_map = rt_map / rt_map_max * 255
-                
+
             rt_map = rt_map.astype(np.uint8)
             # pad the rt_map to be divisible by 32
             pad_h = (32 - rt_map.shape[0] % 32) % 32

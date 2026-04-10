@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import warnings
 from itertools import chain
 
-from utils import (
+from ht_utils import (
     _compute_rt_kernel,
     _make_params,
     endpoints_to_rho_theta_mod,

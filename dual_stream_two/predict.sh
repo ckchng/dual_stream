@@ -19,6 +19,9 @@ OUTPUT_SUBDIR="single_stage/vis"
 # ── Experiments to evaluate (subfolder names under SAVE_ROOT) ─
 EXPERIMENTS=(
     "both_run2"
+    "both_run3"
+    "rt_run2"
+    "rt_run3"
     # Add more experiment names below:
     # "both_run3"
     # "another_experiment"
