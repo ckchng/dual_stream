@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.so
+*.npz
+*.pkl
+*.pt
+*.pth
+*.onnx
+*.log
+.DS_Store

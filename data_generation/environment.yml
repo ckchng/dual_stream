@@ -1,0 +1,11 @@
+name: data_generation
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - numba
+  - matplotlib
+  - pip:
+      - opencv-python
