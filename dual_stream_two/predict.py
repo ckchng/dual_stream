@@ -19,7 +19,7 @@ from albumentations.pytorch import ToTensorV2
 from PIL import Image
 
 from models import get_model
-from sub_ht_network.bs_detector_sep import detect_roundish, compute_rt_map, scale_to_255, remove_masked_with_zero
+from utils.bs_detector_sep import detect_roundish, remove_masked_with_zero
 
 from utils import transforms
 from utils.utils import get_colormap
@@ -28,8 +28,9 @@ import json
 from numba import prange, njit
 from matplotlib import pyplot as plt
 from tools.eval.full_frame_line_eval import line_intersection_check, line_angle_degrees
-from utils.HT_utils import _hough_accumulate_intensity_dh, endpoints_to_rho_theta_dh, rho_theta_to_indices_dh, _make_params_dh, hough_bruteforce_intensity_numba_dh
-from utils.HT_utils import _hough_accumulate_intensity, endpoints_to_rho_theta, rho_theta_to_indices, _make_params, hough_bruteforce_intensity_numba
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..', 'data_generation'))
+from utils import _make_params, compute_rt_map
 
 # -----------------------------------------------------------------------------
 # CONFIG: set USE_ARGPARSE = True to use the hardcoded parameters below.
@@ -112,13 +113,6 @@ class PredictConfig:
 
 
 
-def parse_floats(values: Sequence[str]) -> Tuple[float, float, float]:
-    vals = [float(v) for v in values]
-    if len(vals) != 3:
-        raise argparse.ArgumentTypeError("mean/std must have exactly 3 values (R G B).")
-    return tuple(vals)  # type: ignore[return-value]
-
-
 def build_transform(scale: float, mean: Tuple[float, float, float], std: Tuple[float, float, float]):
     return AT.Compose(
         [
@@ -182,9 +176,9 @@ def tile_image(
 
             processed_tile = np.stack((processed_tile,)*3, axis=-1)
 
-            # rt_map, theta_deg, rhos = hough_bruteforce_intensity_numba(tile[:, :, 0], theta_res_deg=itheta, rho_res=irho)
-            rt_map, theta_deg, rhos = hough_bruteforce_intensity_numba_dh(processed_tile[:, :, 0], max_rho/2, num_rhos, num_angles, itheta, irho,
-                                     rho_min_cap, rho_max_cap)
+            # rt_map, theta_deg, rhos = compute_rt_map(tile[:, :, 0], theta_res_deg=itheta, rho_res=irho)
+            rt_map, theta_deg, rhos = compute_rt_map(processed_tile[:, :, 0], max_rho/2, itheta, irho,
+                                     rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
             print(rt_map.shape)
             
             rt_map = rt_map - rt_map.min()
@@ -229,104 +223,6 @@ def tile_image(
                 }
             )
     return tiles
-
-def _bresenham_line(y0, x0, y1, x1):
-    """
-    Integer Bresenham line algorithm.
-    Returns two 1D arrays: rows (y) and cols (x) of pixels on the line.
-    """
-    y0, x0, y1, x1 = int(y0), int(x0), int(y1), int(x1)
-
-    dy = abs(y1 - y0)
-    dx = abs(x1 - x0)
-
-    sy = 1 if y0 < y1 else -1
-    sx = 1 if x0 < x1 else -1
-
-    err = dx - dy
-
-    ys = []
-    xs = []
-
-    while True:
-        ys.append(y0)
-        xs.append(x0)
-
-        if y0 == y1 and x0 == x1:
-            break
-
-        e2 = 2 * err
-        if e2 > -dy:
-            err -= dy
-            x0 += sx
-        if e2 < dx:
-            err += dx
-            y0 += sy
-
-    return np.array(ys), np.array(xs)
-
-
-def lines_to_binary_mask(lines, image_shape):
-    """
-    Create a binary mask with foreground pixels where lines are drawn.
-
-    Parameters
-    ----------
-    lines : iterable
-        Each element is ((y1, x1), (y2, x2)) specifying endpoints of a line
-        in image coordinates (row = y, col = x). Floats will be rounded.
-    image_shape : tuple
-        (H, W) of the output mask.
-
-    Returns
-    -------
-    mask : np.ndarray
-        Binary mask of shape (H, W), dtype uint8, where 1 = line, 0 = background.
-    """
-    H, W = image_shape
-    mask = np.zeros((H, W), dtype=np.uint8)
-
-    for (x1, y1), (x2, y2) in lines:
-        # round in case inputs are floats
-        y1_r, x1_r = int(round(y1)), int(round(x1))
-        y2_r, x2_r = int(round(y2)), int(round(x2))
-
-        rr, cc = _bresenham_line(y1_r, x1_r, y2_r, x2_r)
-
-        # clip to image bounds
-        valid = (rr >= 0) & (rr < H) & (cc >= 0) & (cc < W)
-        rr = rr[valid]
-        cc = cc[valid]
-
-        mask[rr, cc] = 1
-
-    return mask
-
-def save_prediction(
-    pred_indices: np.ndarray,
-    colors: torch.Tensor,
-    original_rgb: np.ndarray,
-    out_path: str,
-    blend: bool,
-    blend_alpha: float,
-):
-    if colors is not None:
-        color_mask = colors[pred_indices].byte().cpu().numpy()
-        mask_img = Image.fromarray(color_mask)
-    else:
-        mask_img = Image.fromarray(pred_indices.astype(np.uint8), mode="L")
-
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    # mask_img.save(out_path)
-
-    if blend:
-        base = Image.fromarray(original_rgb)
-        if mask_img.mode != "RGB":
-            mask_img = mask_img.convert("RGB")
-        blend_path = out_path.replace(".png", "_blend.png")
-        blended = Image.blend(base, mask_img, blend_alpha)
-        blended.save(blend_path)
-
 
 
 def line_endpoints_center_rho_theta(rho, theta, H, W, eps=1e-10):
@@ -580,101 +476,6 @@ def crop_line_region_with_min_size(img, line_xyxy, min_size=75, pad=10):
     crop = crop.astype(np.uint8)
     return crop, crop_x0, crop_y0
 
-from typing import Tuple, Optional, Union
-import math
-
-Number = Union[int, float]
-
-def tile_for_centering_line(
-    p1: Tuple[Number, Number],
-    p2: Tuple[Number, Number],
-    tile_w: int,
-    tile_h: int,
-    image_w: Optional[int] = None,
-    image_h: Optional[int] = None,
-    snap_to_grid: bool = False,
-    snap_mode: str = "round",   # "round" (nearest), "floor", or "ceil"
-    return_tile_index: bool = False,
-) -> Tuple[int, int]:
-    """
-    Compute the tile location that places the line segment (p1->p2) in the center of the tile.
-
-    Parameters
-    ----------
-    p1, p2 : (x, y)
-        Endpoints of the line segment in image coordinates (pixels).
-    tile_w, tile_h : int
-        Tile width/height in pixels.
-    image_w, image_h : int or None
-        If provided, tile origin is clamped so the tile stays inside the image.
-    snap_to_grid : bool
-        If True, tile origin is snapped to a regular grid: origin_x is multiple of tile_w,
-        origin_y is multiple of tile_h.
-    snap_mode : {"round","floor","ceil"}
-        How to snap to grid.
-    return_tile_index : bool
-        If True, return (col, row) tile indices instead of (x0, y0) pixel origin.
-
-    Returns
-    -------
-    (x0, y0) as ints (top-left pixel of tile) OR (col, row) indices if return_tile_index=True.
-    """
-
-    if tile_w <= 0 or tile_h <= 0:
-        raise ValueError("tile_w and tile_h must be positive integers.")
-
-    x1, y1 = p1
-    x2, y2 = p2
-
-    # 1) Use segment midpoint as the target point to center
-    mx = (x1 + x2) / 2.0
-    my = (y1 + y2) / 2.0
-
-    # 2) Tile origin that makes (mx, my) the tile center
-    x0 = mx - tile_w / 2.0
-    y0 = my - tile_h / 2.0
-
-    # 3) Optionally snap to a (tile_w, tile_h) grid
-    if snap_to_grid:
-        def snap(v: float, step: int) -> int:
-            t = v / step
-            if snap_mode == "round":
-                k = int(round(t))
-            elif snap_mode == "floor":
-                k = int(math.floor(t))
-            elif snap_mode == "ceil":
-                k = int(math.ceil(t))
-            else:
-                raise ValueError("snap_mode must be one of: 'round', 'floor', 'ceil'")
-            return k * step
-
-        x0 = snap(x0, tile_w)
-        y0 = snap(y0, tile_h)
-    else:
-        # If not snapping, you still need an integer pixel origin.
-        # floor is common; round is also reasonable. Here we use floor for stability.
-        x0 = int(math.floor(x0))
-        y0 = int(math.floor(y0))
-
-    # 4) Optionally clamp to image bounds so tile is fully inside image
-    if image_w is not None and image_h is not None:
-        if image_w < tile_w or image_h < tile_h:
-            raise ValueError("Image is smaller than the tile size.")
-        x0 = max(0, min(int(x0), image_w - tile_w))
-        y0 = max(0, min(int(y0), image_h - tile_h))
-    else:
-        x0 = int(x0)
-        y0 = int(y0)
-
-    # 5) Optionally return tile indices (col,row) instead of pixel origin
-    if return_tile_index:
-        # Only meaningful if using a grid; otherwise this is a “virtual” index.
-        col = int(math.floor(x0 / tile_w))
-        row = int(math.floor(y0 / tile_h))
-        return (col, row)
-
-    return (x0, y0)
-
 
 # -----------------------------------------------------------------------------
 # Main prediction flow
@@ -778,7 +579,7 @@ def run(args):
     os.makedirs(os.path.join(fn_dir, str(category_for_hard_to_cat)), exist_ok=True)
 
     #### prepare RT params
-    thetas_deg, thetas, cos_t, sin_t, rhos = _make_params_dh(max_rho/2, theta_res_deg=itheta, rho_res=irho, rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
+    thetas_deg, thetas, cos_t, sin_t, rhos = _make_params(max_rho/2, theta_res_deg=itheta, rho_res=irho, rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
 
     for int_id in range(len(image_dirs)):
 
@@ -801,11 +602,7 @@ def run(args):
         anno = [anno for anno in annotations if anno['image_id'] == image_dirs[int_id]['id']]
         gt_lines = [a['xyxy'] for a in anno]
         gt_category_ids = [int(a.get('category_id', -1)) for a in anno]
-        # zero_mask = img == 0
-        # img = img / img.min()
-        # img = img / img.max() * 255.0
-        # img[zero_mask] = 0
-        # img = img.astype(np.uint8)
+        
         # stack it to create 3 channels
         image_rgb = np.stack((img,)*3, axis=-1)
         img_scaled = img.copy()
@@ -815,7 +612,7 @@ def run(args):
         img_scaled[zero_mask] = 0
         img_scaled = img_scaled.astype(np.uint8)
         img_scaled = np.stack((img_scaled,)*3, axis=-1)
-        img_scaled_for_fn = img_scaled.copy()
+        
         tiles = tile_image(image_rgb, tile_size=args.tile_size, stride=args.tile_stride, max_rho=max_rho, 
                            num_rhos=args.num_rhos, num_angles=args.num_angles, itheta=itheta, irho=irho, 
                            rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap, params=args.sep_params, sep=args.sep)
@@ -1001,10 +798,9 @@ def run(args):
                     masked_tile = tile['ori_img'] * mask[:, :, np.newaxis]
                     
                     # compute the RT map for the masked tile
-                    sub_rt_map, _, _ = hough_bruteforce_intensity_numba_dh(masked_tile[:, :, 0], max_rho/2, args.num_rhos, args.num_angles, theta_res_deg=itheta, rho_res=irho,
-                                                                           rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
+                    sub_rt_map, _, _ = compute_rt_map(masked_tile[:, :, 0], max_rho/2, theta_res_deg=itheta, rho_res=irho,
+                                                       rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
                     
-                    # max_rho = np.hypot(tile_width, tile_height)
 
                     zero_mask = masked_tile == 0
                     masked_tile = masked_tile - masked_tile.min()
@@ -1138,16 +934,7 @@ def run(args):
         merged_lines = merge_connected_segments_2d(all_pred_lines, 1e-6)
         # merged_mask = lines_to_binary_mask(merged_lines, [img.shape[0], img.shape[1]]).astype(np.uint64)
         output_image_path = os.path.join(args.output_dir, f"{os.path.splitext(os.path.basename(img_path))[0]}_mask.png")
-        # save_prediction(
-        #         pred_indices=merged_mask,
-        #         colors=colors,
-        #         original_rgb=img_scaled,
-        #         out_path=output_image_path,
-        #         blend=args.blend,
-        #         blend_alpha=args.blend_alpha,
-        #     )
-            # check this first, if it works, then we proceed to evaluate the lines
-            # visualise the merged lines on the original image
+        
         
         for curr_line, curr_category_id in zip(gt_lines, gt_category_ids):
             if curr_category_id not in category_ids_for_split:

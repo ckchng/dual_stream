@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+# PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
 SCRIPT="$(dirname "$0")/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
-IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/tmp/"
+# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
+IMG_DIR=/hpcfs/users/a1775493/ck/dual_stream/data/bg_data/
+OUTPUT_DIR="/hpcfs/users/a1775493/ck/dual_stream/data/tmp/"
 
 # ── Range selection ────────────────────────────────────────────────────────────
 STARTING_ID=100
