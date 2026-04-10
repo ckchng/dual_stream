@@ -179,12 +179,13 @@ def tile_image(
             # rt_map, theta_deg, rhos = compute_rt_map(tile[:, :, 0], theta_res_deg=itheta, rho_res=irho)
             rt_map, theta_deg, rhos = compute_rt_map(processed_tile[:, :, 0], max_rho/2, itheta, irho,
                                      rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
-            print(rt_map.shape)
+            
             
             rt_map = rt_map - rt_map.min()
             rt_map_max = rt_map.max()
             if rt_map_max > 0:
                 rt_map = rt_map / rt_map_max * 255
+                
             rt_map = rt_map.astype(np.uint8)
             # pad the rt_map to be divisible by 32
             pad_h = (32 - rt_map.shape[0] % 32) % 32

@@ -4,7 +4,7 @@
 #SBATCH -c 8
 #SBATCH --time=48:00:00
 #SBATCH --mem=32GB
-#SBATCH -A strategic
+
 
 
 set -euo pipefail
