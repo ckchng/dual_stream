@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+#SBATCH -p a100cpu
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --time=48:00:00
+#SBATCH --mem=32GB
+#SBATCH -A strategic
+
+
 set -euo pipefail
 
 # PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
