@@ -11,7 +11,7 @@ set -euo pipefail
 
 # PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
 PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
-SCRIPT="/hpcfs/users/a1775493/ck/conda_env/dual_stream/data_generation/training_data_gen_for_RT.py"
+SCRIPT="/hpcfs/users/a1775493/ck/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
