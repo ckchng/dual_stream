@@ -15,7 +15,7 @@ SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_da
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/bg_data/
+IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
 OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/tmp/"
 
 # ── Range selection ────────────────────────────────────────────────────────────
