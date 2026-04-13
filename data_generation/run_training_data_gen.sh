@@ -21,13 +21,13 @@ OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200/"
 
 # local directory
 
-PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
-SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
+# PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+# SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
 
-# ── IO ─────────────────────────────────────────────────────────────────────────
-# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
-OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/"
+# # ── IO ─────────────────────────────────────────────────────────────────────────
+# # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
+# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
+# OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/"
 
 
 # ── Range selection ────────────────────────────────────────────────────────────
