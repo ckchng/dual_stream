@@ -18,10 +18,10 @@ OUTPUT_SUBDIR="single_stage/vis"
 
 # ── Experiments to evaluate (subfolder names under SAVE_ROOT) ─
 EXPERIMENTS=(
-    "both_run2"
-    "both_run3"
-    "rt_run2"
-    "rt_run3"
+    "both_run4"
+    "both_run5"
+    #"rt_run4"
+    #"rt_run5"
     # Add more experiment names below:
     # "both_run3"
     # "another_experiment"
@@ -33,6 +33,7 @@ ANNO_JSON="/home/ckchng/Documents/SDA_ODA/LMA_data/testing_data_label_with_dual_
 
 # ── Model ────────────────────────────────────────────────────
 MODEL="bisenetv2dualmaskguidedv2"
+#MODEL="bisenetv2"
 ENCODER=""                  # leave empty if not used (smp models only)
 DECODER=""                  # leave empty if not used (smp models only)
 NUM_CLASSES=2
@@ -68,6 +69,74 @@ SEP_PARAMS="3.0 6 5.5 0.6 6.0 0.1"
 PALETTE="cityscapes"        # binary | cityscapes | none
 BLEND=true                  # set to true/false
 BLEND_ALPHA=0.3
+
+# ============================================================
+# Run over each checkpoint
+# ============================================================
+cd "$(dirname "$0")"
+
+total=${#EXPERIMENTS[@]}
+idx=0
+
+for exp in "${EXPERIMENTS[@]}"; do
+    idx=$((idx + 1))
+    CKPT="$SAVE_ROOT/$exp/$CKPT_FILENAME"
+    OUTPUT_DIR="$SAVE_ROOT/$exp/$OUTPUT_SUBDIR"
+
+    echo ""
+    echo "============================================================"
+    echo "[$idx/$total] Checkpoint : $CKPT"
+    echo "             Output dir  : $OUTPUT_DIR"
+    echo "============================================================"
+
+    ARGS=(
+        --model "$MODEL"
+        --ckpt "$CKPT"
+        --img-dir "$IMG_DIR"
+        --anno-json "$ANNO_JSON"
+        --output-dir "$OUTPUT_DIR"
+        --num-classes "$NUM_CLASSES"
+        --device "$DEVICE"
+        --batch-size "$BATCH_SIZE"
+        --scale "$SCALE"
+        --mean $MEAN
+        --std $STD
+        --mean2 $MEAN2
+        --std2 $STD2
+        --tile-size "$TILE_SIZE"
+        --tile-stride "$TILE_STRIDE"
+        --num_angles "$NUM_ANGLES"
+        --num_rhos "$NUM_RHOS"
+        --rho-min-cap "$RHO_MIN_CAP"
+        --rho-max-cap "$RHO_MAX_CAP"
+        --sep-params $SEP_PARAMS
+        --palette "$PALETTE"
+        --blend-alpha "$BLEND_ALPHA"
+    )
+
+    [ -n "$ENCODER" ]      && ARGS+=(--encoder "$ENCODER")
+    [ -n "$DECODER" ]      && ARGS+=(--decoder "$DECODER")
+    [ "$USE_AUX" = true ]  && ARGS+=(--use-aux)
+    [ "$BLEND" = true ]    && ARGS+=(--blend)
+    [ "$SEP" = true ]      && ARGS+=(--sep true) || ARGS+=(--sep false)
+
+    python predict.py "${ARGS[@]}"
+done
+
+echo ""
+echo "All $total checkpoint(s) done."
+
+
+MODEL="bisenetv2"
+EXPERIMENTS=(
+    #"both_run4"
+    #"both_run5"
+    "rt_run4"
+    "rt_run5"
+    # Add more experiment names below:
+    # "both_run3"
+    # "another_experiment"
+)
 
 # ============================================================
 # Run over each checkpoint

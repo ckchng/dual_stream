@@ -209,7 +209,7 @@ def generate_random_line(min_x0, max_x0, min_y0, max_y0, length_range, length_ra
 
     return [x0, y0, x1, y1]
 
-def generate_and_trim_lines(tile_width, tile_height, offset, length_range, length_ratio1, length_ratio2, max_num_streak):
+def generate_and_trim_lines(tile_width, tile_height, offset, length_range, length_ratio1, length_ratio2, max_num_streak, length_min=200):
     x0_min = 0 - offset
     x0_max = tile_width + offset
     y0_min = 0 - offset
@@ -231,7 +231,7 @@ def generate_and_trim_lines(tile_width, tile_height, offset, length_range, lengt
                 # check the lenght of the adjusted_line, if it's too small, discard it
                 pt1 = np.array([adjusted_line[0], adjusted_line[1]])
                 pt2 = np.array([adjusted_line[2], adjusted_line[3]])
-                if np.linalg.norm(pt1 - pt2) < 50:
+                if np.linalg.norm(pt1 - pt2) < length_min:
                     adjusted_line = None
                 else:    
                     adjusted_lines.append(adjusted_line)
@@ -591,7 +591,7 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
 
         height, width = img.shape
         # width, height = img.size
-        lines = generate_and_trim_lines(width, height, 100, length_range, length_ratio_1, length_ratio_2, max_num_streak)
+        lines = generate_and_trim_lines(width, height, 100, length_range, length_ratio_1, length_ratio_2, max_num_streak, length_min=args.length_min_1)
 
         synth_patch, _, rt_map, lines, polys, lengths, snrs, sigmas = lines_to_synth_patch(np.array(img), lines, snr_range, sigma_range, lc_width, max_phi,
                                                   width, height, snr_ratio, sigma_ratio, scale_flag, zero_mask, img_min,
@@ -904,7 +904,7 @@ def clip_line_to_image(p0, p1, image_shape):
 import argparse
 
 # =========================
-USE_ARGPARSE = True  # set True to use CLI; False to use CONFIG below
+USE_ARGPARSE = False  # set True to use CLI; False to use CONFIG below
 
 CONFIG = {
     # IO
@@ -914,20 +914,20 @@ CONFIG = {
     "starting_id": 100,
     "step": 100,                                # number of files to take starting from starting_id
     "num_angles": 192,                            # number of angles for Hough Transform
-    "num_rhos": 416,                              # number of rho values for Hough Transform
-    # "num_rhos": 288,
-    # "rho_min_cap": -144,
-    # "rho_max_cap": 143,
-    "rho_min_cap": None,
-    "rho_max_cap": None,
+    #"num_rhos": 416,                              # number of rho values for Hough Transform
+    "num_rhos": 288,
+    "rho_min_cap": -144,
+    "rho_max_cap": 143,
+    #"rho_min_cap": None,
+    #"rho_max_cap": None,
     # Hyperparameters
-    "snr_min_1": 1.6, "snr_max_1": 2.5,
+    "snr_min_1": 1.32, "snr_max_1": 1.35,
     "snr_min_2": 1.25, "snr_max_2": 2.0,
 
     "sigma_min_1": 0.75, "sigma_max_1": 1.3,
     "sigma_min_2": 1.25, "sigma_max_2": 2.0,
 
-    "length_min_1": 100, "length_max_1": 400,
+    "length_min_1": 200, "length_max_1": 400,
     "length_min_2": 50, "length_max_2": 600,
     "length_min_3": 601, "length_max_3": 1000,
 
