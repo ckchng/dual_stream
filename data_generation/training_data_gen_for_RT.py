@@ -904,7 +904,7 @@ def clip_line_to_image(p0, p1, image_shape):
 import argparse
 
 # =========================
-USE_ARGPARSE = False  # set True to use CLI; False to use CONFIG below
+USE_ARGPARSE = True  # set True to use CLI; False to use CONFIG below
 
 CONFIG = {
     # IO
