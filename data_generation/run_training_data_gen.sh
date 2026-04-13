@@ -16,26 +16,27 @@ SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_da
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
 IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
-OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/tmp/"
+OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200/"
 
 # ── Range selection ────────────────────────────────────────────────────────────
-STARTING_ID=100
-STEP=100
+# Allow submit_all.sh to override STARTING_ID via the environment.
+STARTING_ID="${STARTING_ID_OVERRIDE:-0}"
+STEP=1000
 NUM_ANGLES=192
-NUM_RHOS=416
+NUM_RHOS=288
 
 # ── Rho caps (comment out both lines to disable capping) ──────────────────────
-# RHO_MIN_CAP=-144
-# RHO_MAX_CAP=143
+RHO_MIN_CAP=-144
+RHO_MAX_CAP=143
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
-SNR_MIN_1=1.6;   SNR_MAX_1=2.5
+SNR_MIN_1=1.32;   SNR_MAX_1=2.5
 SNR_MIN_2=1.25;  SNR_MAX_2=2.0
 
 SIGMA_MIN_1=0.75; SIGMA_MAX_1=1.3
 SIGMA_MIN_2=1.25; SIGMA_MAX_2=2.0
 
-LENGTH_MIN_1=100; LENGTH_MAX_1=400
+LENGTH_MIN_1=200; LENGTH_MAX_1=400
 LENGTH_MIN_2=50;  LENGTH_MAX_2=600
 LENGTH_MIN_3=601; LENGTH_MAX_3=1000
 
@@ -47,12 +48,12 @@ LENGTH_RATIO_2=0.66
 LC_WIDTH=3
 MAX_NUM_STREAK=1
 SCALE_FLAG=1
-LINE_MASK_THICKNESS=5
+LINE_MASK_THICKNESS=3
 
 # ── Build rho-cap args conditionally ──────────────────────────────────────────
-RHO_ARGS=""
+#RHO_ARGS=""
 # Uncomment the two lines below to enable rho capping:
-# RHO_ARGS="--rho_min_cap ${RHO_MIN_CAP} --rho_max_cap ${RHO_MAX_CAP}"
+RHO_ARGS="--rho_min_cap ${RHO_MIN_CAP} --rho_max_cap ${RHO_MAX_CAP}"
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 "$PYTHON" "$SCRIPT" \
