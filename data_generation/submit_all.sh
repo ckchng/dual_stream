@@ -10,7 +10,7 @@ INNER_SCRIPT="$SCRIPT_DIR/run_training_data_gen.sh"
 
 STEP=1000
 START=0
-END=30000   # exclusive upper bound
+END=1000   # exclusive upper bound
 
 for starting_id in $(seq "$START" "$STEP" $(( END - STEP ))); do
     # Override STARTING_ID inside the inner script via env variable,
