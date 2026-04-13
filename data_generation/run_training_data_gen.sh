@@ -9,7 +9,8 @@
 
 set -euo pipefail
 
-# PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+# ph directory
+
 PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
 SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
 
@@ -18,10 +19,21 @@ SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_da
 IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
 OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200/"
 
+# local directory
+
+PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
+
+# ── IO ─────────────────────────────────────────────────────────────────────────
+# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
+IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
+OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/"
+
+
 # ── Range selection ────────────────────────────────────────────────────────────
 # Allow submit_all.sh to override STARTING_ID via the environment.
 STARTING_ID="${STARTING_ID_OVERRIDE:-0}"
-STEP=1000
+STEP="${STEP_OVERRIDE:-1000}"
 NUM_ANGLES=192
 NUM_RHOS=288
 
