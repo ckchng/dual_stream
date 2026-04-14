@@ -13,14 +13,14 @@ HARD_CONFIG = dict(
     # input_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/rt_only/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
     # input_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
     # input_dir="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/both_run5/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
-    input_dir="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/multi_model_eval/rt_run5/full_frame_result/txt/",
+    input_dir="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/multi_model_eval/both_run5/full_frame_result/txt/",
     max_angle=5,    # degrees
     max_dist=10.0,    # pixels
     eps=1e-2,
     img_dir= "/media/ckchng/internal2TB/FILTERED_IMAGES/",
     anno_json= "/home/ckchng/Documents/SDA_ODA/LMA_data/testing_data_label_with_dual_single_stage_and_rt_two_stage_labeled_merged_labels.json",
     # output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/rt_only/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt",
-    output_dir="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/multi_model_eval/rt_run5/full_frame_result/merged_txt",
+    output_dir="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/multi_model_eval/both_run5/full_frame_result/merged_txt",
 )
 
 Point = Tuple[float, float]
