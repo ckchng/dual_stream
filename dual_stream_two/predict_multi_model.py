@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """
-Standalone prediction script.
+Multi-model prediction script.
 
-Loads a pretrained segmentation model and runs a forward pass on images you
-provide (file or directory). This mirrors the repo's test-time preprocessing:
-optional scaling, normalization, and ToTensorV2 -> model -> argmax. Outputs
-class-index masks and optional color-blended overlays.
+Loads multiple pretrained segmentation models (one per supplied directory) and
+runs inference on every tiled image. Results for each model are saved to
+separate sub-directories under a shared output root.
 """
 import argparse
 import os
@@ -39,31 +38,25 @@ from ht_utils import _make_params, compute_rt_map
 USE_ARGPARSE = True
 HARD_CONFIG = dict(
     model="bisenetv2dualmaskguidedv2",
-    # model="bisenetv2",
-    # model="litehrnet",
     encoder=None,
     decoder=None,
-    # encoder_weights="imagenet",
     num_classes=2,
     use_aux=True,
-    # use_aux=False,
-    # ckpt="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/single_class/rt_only/best.pth",
-    ckpt="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/both_new_mean/best.pth",
+    # List of checkpoint directories; each must contain best.pth (or set ckpt_filename below)
+    model_dirs=[
+        "/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/both_new_mean",
+    ],
+    ckpt_filename="best.pth",
+    # Shared output root; per-model results go into <output_root>/<model_dir_name>/
+    output_root="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/multi_model_eval/",
     img_dir= "/media/ckchng/internal2TB/FILTERED_IMAGES/",
     anno_json= "/home/ckchng/Documents/SDA_ODA/LMA_data/testing_data_label_with_dual_single_stage_and_rt_two_stage_labeled_merged_labels.json",
     num_angles=192,
     num_rhos=288,
     sep=True,
-
-    # input="/path/to/your/input_image.png",
-    # output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/gray_rt_288_snr_1_15_new_bg_longer_dimmer/rt_map_only/single_stage/vis/",
-    # output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/single_class/rt_only/single_stage/vis/",
-    output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/both_new_mean/single_stage/vis/",
     device="auto",
     batch_size=128,
     scale=1.0,
-    # mean=(0.30566086, 0.30566086, 0.30566086),
-    # std=(0.21072077, 0.21072077, 0.21072077),
     mean = (0.39509313, 0.39509313, 0.395093130),
     std = (0.17064099, 0.17064099, 0.17064099),
     mean2=(0.34827731, 0.34827731, 0.34827731),
@@ -72,7 +65,7 @@ HARD_CONFIG = dict(
     blend=True,
     blend_alpha=0.3,
     tile_size=288,
-    tile_stride=144,  # overlap = tile_size - stride
+    tile_stride=144,
     sep_params=[3.0, 6, 5.5, 0.6, 6.0, 0.1],
     rho_min_cap=-144,
     rho_max_cap=143
@@ -481,34 +474,17 @@ def crop_line_region_with_min_size(img, line_xyxy, min_size=75, pad=10):
 # -----------------------------------------------------------------------------
 # Main prediction flow
 # -----------------------------------------------------------------------------
-def run(args):
-    # check if output_dir exists
-    # if not, makedirs
-    os.makedirs(os.path.join(args.output_dir, 'full_frame_result', 'txt'), exist_ok=True)
-    os.makedirs(os.path.join(args.output_dir, 'full_frame_result', 'vis'), exist_ok=True)
-    
-    device = torch.device(args.device if args.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+def run_multi_model(args):
+    """Run inference for all models in args.model_dirs over all images."""
 
-    config = PredictConfig(
-        model=args.model,
-        num_class=args.num_classes,
-        encoder=args.encoder,
-        decoder=args.decoder,
-        # encoder_weights=args.encoder_weights,
-        use_aux=args.use_aux,
-        colormap=args.palette if args.palette == "cityscapes" else "cityscapes",  # used only when palette == cityscapes
-    )
-    ## setup model, load checkpoint
-    model = get_model(config).to(device)
-    model.eval()
-    load_checkpoint(model, args.ckpt, device)
+    device = torch.device(args.device if args.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 
     is_dual = 'dual' in args.model.lower()
     is_maskguided = 'maskguided' in args.model.lower()
-    if is_dual:
-        # Split transforms for dual stream; keep shapes as-is (no paired padding)
-        scale_transform = transforms.Scale(scale=args.scale, is_testing=True)
 
+    # ── Build shared transforms ───────────────────────────────────────────────
+    if is_dual:
+        scale_transform = transforms.Scale(scale=args.scale, is_testing=True)
         norm_transform1 = AT.Compose([
             AT.Normalize(mean=args.mean, std=args.std),
             ToTensorV2(),
@@ -519,8 +495,38 @@ def run(args):
         ])
     else:
         transform = build_transform(scale=args.scale, mean=args.mean, std=args.std)
-    
+
+    # ── Load all models once ──────────────────────────────────────────────────
+    config = PredictConfig(
+        model=args.model,
+        num_class=args.num_classes,
+        encoder=args.encoder,
+        decoder=args.decoder,
+        use_aux=args.use_aux,
+        colormap=args.palette if args.palette == "cityscapes" else "cityscapes",
+    )
     colors = prepare_palette(args, config)
+
+    ckpt_filename = getattr(args, 'ckpt_filename', 'best.pth')
+    loaded_models = []  # list of (model_dir_name, model, output_dir)
+    for model_dir in args.model_dirs:
+        model_dir_name = os.path.basename(os.path.normpath(model_dir))
+        ckpt_path = os.path.join(model_dir, ckpt_filename)
+        if not os.path.isfile(ckpt_path):
+            print(f"[WARNING] Checkpoint not found, skipping: {ckpt_path}")
+            continue
+        m = get_model(config).to(device)
+        m.eval()
+        load_checkpoint(m, ckpt_path, device)
+        output_dir = os.path.join(args.output_root, model_dir_name)
+        # Create per-model output directories
+        os.makedirs(os.path.join(output_dir, 'full_frame_result', 'txt'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, 'full_frame_result', 'vis'), exist_ok=True)
+        loaded_models.append((model_dir_name, m, output_dir))
+        print(f"Loaded model: {model_dir_name}  ckpt: {ckpt_path}")
+
+    if not loaded_models:
+        raise RuntimeError("No valid checkpoints found in model_dirs.")
 
     
     #### load image
@@ -533,6 +539,10 @@ def run(args):
                     img_name = os.path.splitext(filename)[0]
                     img_path = os.path.join(root, filename)
                     img_paths[img_name] = img_path
+
+    # data_dict = np.load(args.anno_npz, allow_pickle=True)
+    # image_dirs = [str(p) for p in data_dict['imgPath']]
+    # annotations = data_dict['XY']
 
     # load json file for annotations
     with open(args.anno_json, 'r') as f:
@@ -558,30 +568,30 @@ def run(args):
     
     
 
-    tp_dir = os.path.join(args.output_dir, 'tile_tp')
-    fp_dir = os.path.join(args.output_dir, 'tile_fp')
-    fn_dir = os.path.join(args.output_dir, 'tile_fn')
     category_ids_for_split = [1, 9, 10]
     category_for_not_relevant = 3
     category_for_hard_to_cat = 5
 
-    os.makedirs(tp_dir, exist_ok=True)
-    os.makedirs(fp_dir, exist_ok=True)
-    os.makedirs(fn_dir, exist_ok=True)
-    for category_id in category_ids_for_split:
-        os.makedirs(os.path.join(tp_dir, str(category_id)), exist_ok=True)
-        os.makedirs(os.path.join(fn_dir, str(category_id)), exist_ok=True)
-
-    os.makedirs(os.path.join(tp_dir, str(category_for_hard_to_cat)), exist_ok=True)
-    os.makedirs(os.path.join(fn_dir, str(category_for_hard_to_cat)), exist_ok=True)
+    # Create per-model tile sub-directories
+    model_dirs_info = []  # (model_dir_name, model, output_dir, tp_dir, fp_dir, fn_dir)
+    for model_dir_name, m, output_dir in loaded_models:
+        tp_dir = os.path.join(output_dir, 'tile_tp')
+        fp_dir = os.path.join(output_dir, 'tile_fp')
+        fn_dir = os.path.join(output_dir, 'tile_fn')
+        os.makedirs(tp_dir, exist_ok=True)
+        os.makedirs(fp_dir, exist_ok=True)
+        os.makedirs(fn_dir, exist_ok=True)
+        for category_id in category_ids_for_split:
+            os.makedirs(os.path.join(tp_dir, str(category_id)), exist_ok=True)
+            os.makedirs(os.path.join(fn_dir, str(category_id)), exist_ok=True)
+        os.makedirs(os.path.join(tp_dir, str(category_for_hard_to_cat)), exist_ok=True)
+        os.makedirs(os.path.join(fn_dir, str(category_for_hard_to_cat)), exist_ok=True)
+        model_dirs_info.append((model_dir_name, m, output_dir, tp_dir, fp_dir, fn_dir))
 
     #### prepare RT params
     thetas_deg, thetas, cos_t, sin_t, rhos = _make_params(max_rho/2, theta_res_deg=itheta, rho_res=irho, rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
 
     for int_id in range(len(image_dirs)):
-
-        # check if the output file exists
-        out_path = os.path.join(args.output_dir, 'full_frame_result/vis', f"{os.path.splitext(os.path.basename(image_dirs[int_id]['file_name']))[0]}_lines.png")
 
         # # skip 'not relevant' if labeled
         # label = "unknown"
@@ -610,384 +620,304 @@ def run(args):
         img_scaled = img_scaled.astype(np.uint8)
         img_scaled = np.stack((img_scaled,)*3, axis=-1)
         
-        tiles = tile_image(image_rgb, tile_size=args.tile_size, stride=args.tile_stride, max_rho=max_rho, 
-                           num_rhos=args.num_rhos, num_angles=args.num_angles, itheta=itheta, irho=irho, 
+        tiles = tile_image(image_rgb, tile_size=args.tile_size, stride=args.tile_stride, max_rho=max_rho,
+                           num_rhos=args.num_rhos, num_angles=args.num_angles, itheta=itheta, irho=irho,
                            rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap, params=args.sep_params, sep=args.sep)
-        print(len(tiles))
+        print(f"{img_name}: {len(tiles)} tiles")
 
-        os.makedirs(args.output_dir, exist_ok=True)
-
-        # Process tiles in batches
-        # time start here
-        all_pred_lines = []
-        preds_id_with_values = []
+        # ── Pre-compute all batch tensors once (shared across models) ─────────
+        all_batch_tensors  = []  # list of batch_tensor (one per batch)
+        all_batch_tensors2 = []  # list of batch_tensor2 (dual stream only)
         for idx in range(0, len(tiles), args.batch_size):
             batch_tiles = tiles[idx : idx + args.batch_size]
-
             images_aug = []
             images2_aug = []
             for t in batch_tiles:
-                
                 if is_dual:
-                    # 1. Scale
                     res1 = scale_transform(image=t["rt_map"])
                     res2 = scale_transform(image=t["scaled_img"])
-                    img1_scaled = res1["image"]
-                    img2_scaled = res2["image"]
-                    
-                    # 2. Normalize & ToTensor (no extra padding)
-                    final1 = norm_transform1(image=img1_scaled)["image"]
-                    final2 = norm_transform2(image=img2_scaled)["image"]
-                    
+                    final1 = norm_transform1(image=res1["image"])["image"]
+                    final2 = norm_transform2(image=res2["image"])["image"]
                     images_aug.append(final1)
                     images2_aug.append(final2)
                 else:
-                    augmented = transform(image=t["rt_map"])
-                    images_aug.append(augmented["image"])
-
-            batch_tensor = torch.stack(images_aug).to(device=device, dtype=torch.float32)
-
+                    images_aug.append(transform(image=t["rt_map"])["image"])
+            all_batch_tensors.append(torch.stack(images_aug).to(device=device, dtype=torch.float32))
             if is_dual:
-                batch_tensor2 = torch.stack(images2_aug).to(device=device, dtype=torch.float32)
+                all_batch_tensors2.append(torch.stack(images2_aug).to(device=device, dtype=torch.float32))
+            else:
+                all_batch_tensors2.append(None)
 
-            with torch.no_grad():
-                if is_dual:
-                    logits = model(batch_tensor, batch_tensor2)
-                else:
-                    logits = model(batch_tensor)
+        # ── Run each model independently ──────────────────────────────────────
+        for model_dir_name, model, output_dir, tp_dir, fp_dir, fn_dir in model_dirs_info:
+            print(f"  [{model_dir_name}] running inference...")
+            all_pred_lines = []
 
-                logits_main = logits
-                logits_s2 = None
+            for batch_idx, (idx, batch_tensor, batch_tensor2) in enumerate(
+                zip(range(0, len(tiles), args.batch_size), all_batch_tensors, all_batch_tensors2)
+            ):
+                batch_tiles = tiles[idx : idx + args.batch_size]
 
-                # For maskguided dual models, expect two outputs; otherwise take single
-                if isinstance(logits, (tuple, list)):
-                    if is_maskguided and len(logits) >= 2:
-                        logits_main, logits_s2 = logits[0], logits[1]
+                with torch.no_grad():
+                    if is_dual:
+                        logits = model(batch_tensor, batch_tensor2)
                     else:
-                        logits_main = logits[0]
-                # Compute main predictions (rt) first
-                if args.num_classes == 2:
-                    preds_rt_tensor = logits_main.argmax(dim=1)
-                elif args.num_classes == 1:
-                    preds_rt_tensor = (logits_main.sigmoid() > 0.5).squeeze(1).long()
-                else:
-                    preds_rt_tensor = logits_main.argmax(dim=1)
+                        logits = model(batch_tensor)
 
-                # Compute streak predictions (second stream) if present; otherwise create a zero-mask
-                if logits_s2 is None:
-                    preds_streak_tensor = torch.zeros_like(preds_rt_tensor)
-                else:
-                    # Handle common shapes for logits_s2
-                    try:
-                        if args.num_classes == 2:
-                            # multi-class map -> take argmax over channel dim
-                            preds_streak_tensor = logits_s2.argmax(dim=1)
-                        elif args.num_classes == 1:
-                            preds_streak_tensor = (logits_s2.sigmoid() > 0.5).squeeze(1).long()
+                    logits_main = logits
+                    logits_s2 = None
+                    if isinstance(logits, (tuple, list)):
+                        if is_maskguided and len(logits) >= 2:
+                            logits_main, logits_s2 = logits[0], logits[1]
                         else:
-                            preds_streak_tensor = logits_s2.argmax(dim=1)
-                    except Exception:
-                        # Fallback: create zero mask matching preds_rt shape
+                            logits_main = logits[0]
+
+                    if args.num_classes == 2:
+                        preds_rt_tensor = logits_main.argmax(dim=1)
+                    elif args.num_classes == 1:
+                        preds_rt_tensor = (logits_main.sigmoid() > 0.5).squeeze(1).long()
+                    else:
+                        preds_rt_tensor = logits_main.argmax(dim=1)
+
+                    if logits_s2 is None:
                         preds_streak_tensor = torch.zeros_like(preds_rt_tensor)
+                    else:
+                        try:
+                            if args.num_classes == 2:
+                                preds_streak_tensor = logits_s2.argmax(dim=1)
+                            elif args.num_classes == 1:
+                                preds_streak_tensor = (logits_s2.sigmoid() > 0.5).squeeze(1).long()
+                            else:
+                                preds_streak_tensor = logits_s2.argmax(dim=1)
+                        except Exception:
+                            preds_streak_tensor = torch.zeros_like(preds_rt_tensor)
 
-            # Move to CPU and numpy for downstream processing
-            preds_rt = preds_rt_tensor.cpu().numpy()
-            preds_streak = preds_streak_tensor.cpu().numpy()
-            
-            peak = []
-            bboxes = []
+                preds_rt = preds_rt_tensor.cpu().numpy()
+                preds_streak = preds_streak_tensor.cpu().numpy()
 
-            processed_batch_tiles = []
-            for pred, pstreak, tile in zip(preds_rt, preds_streak, batch_tiles):
-                pred_lines = []
-                pred_streak_mask = []
-                if pred.max() == 0:
-                    continue
+                peak = []
+                bboxes = []
 
-                # Connected components: labels + statistics
-                # stats: [label, x, y, width, height, area]
-                num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-                    pred.astype(np.uint8), connectivity=8
-                )
-
-                # bboxes = []
-                # Label 0 is background, skip it
-                legit_pred_flag = False
-                for label_id in range(1, num_labels):
-                    x, y, w, h, area = stats[label_id]
-                    if area == 0:
-                        continue
-                    x1, y1 = x, y
-                    x2, y2 = x + w - 1, y + h - 1  # inclusive coordinates
-                    if w < 10 or h < 10:
-                        continue
-                    bboxes.append((x1, y1, x2, y2))
-                    
-                    # find peak intensity location in original image
-                    crop_rt_map = tile['rt_map'][y1:y2+1, x1:x2+1, 0]
-
-                    # Find peak intensity location in cropped image
-                    minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(crop_rt_map)
-                    peak_x = np.clip(maxLoc[0] + x1, 0, len(rhos) - 1)
-                    peak_y = np.clip(maxLoc[1] + y1, 0, len(thetas) - 1)
-
-                    pred_rho = rhos[int(round(peak_x))]
-                    pred_theta = thetas[int(round(peak_y))]
-                    
-                    # remove lines with rho too close to the border
-                    if pred_rho < -120 or pred_rho > 120:
+                processed_batch_tiles = []
+                for pred, pstreak, tile in zip(preds_rt, preds_streak, batch_tiles):
+                    pred_lines = []
+                    pred_streak_mask = []
+                    if pred.max() == 0:
                         continue
 
-                    # convert the peak back to line parameters
-                    pred_p0, pred_p1 = line_endpoints_center_rho_theta(pred_rho, pred_theta, args.tile_size, args.tile_size)
+                    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+                        pred.astype(np.uint8), connectivity=8
+                    )
 
-                    if pred_p0 is None or pred_p1 is None:
-                        continue
-                    
-                    # convert the endpoints to global coordinates
-                    global_pred_p0 = (pred_p0[0] + tile['x'], pred_p0[1] + tile['y'])
-                    global_pred_p1 = (pred_p1[0] + tile['x'], pred_p1[1] + tile['y'])                        
+                    legit_pred_flag = False
+                    for label_id in range(1, num_labels):
+                        x, y, w, h, area = stats[label_id]
+                        if area == 0:
+                            continue
+                        x1, y1 = x, y
+                        x2, y2 = x + w - 1, y + h - 1
+                        if w < 10 or h < 10:
+                            continue
+                        bboxes.append((x1, y1, x2, y2))
 
-                    # append the line parameters
-                    pred_lines.append([global_pred_p0[0], global_pred_p0[1], global_pred_p1[0], global_pred_p1[1]])
-                    all_pred_lines.append([global_pred_p0[0], global_pred_p0[1], global_pred_p1[0], global_pred_p1[1]])
-                    
-                # save each line independently
-                gt_box_matched_id = line_intersection_check(pred_lines, gt_lines)
-                # check if each line intersects with any of the annotations, refer to line_eval
-                gt_line_matched_id = np.ones(len(gt_lines)) * -1
-                # for each matched_gt_lines, measure the angular distance between gt_line and pred_line
-                matched_pred_idx = set()
-                pred_idx_to_category = {}
-                for gt_idx, matched_pred_indices in enumerate(gt_box_matched_id):
+                        crop_rt_map = tile['rt_map'][y1:y2+1, x1:x2+1, 0]
+                        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(crop_rt_map)
+                        peak_x = np.clip(maxLoc[0] + x1, 0, len(rhos) - 1)
+                        peak_y = np.clip(maxLoc[1] + y1, 0, len(thetas) - 1)
+
+                        pred_rho = rhos[int(round(peak_x))]
+                        pred_theta = thetas[int(round(peak_y))]
+
+                        if pred_rho < -120 or pred_rho > 120:
+                            continue
+
+                        pred_p0, pred_p1 = line_endpoints_center_rho_theta(pred_rho, pred_theta, args.tile_size, args.tile_size)
+                        if pred_p0 is None or pred_p1 is None:
+                            continue
+
+                        global_pred_p0 = (pred_p0[0] + tile['x'], pred_p0[1] + tile['y'])
+                        global_pred_p1 = (pred_p1[0] + tile['x'], pred_p1[1] + tile['y'])
+
+                        pred_lines.append([global_pred_p0[0], global_pred_p0[1], global_pred_p1[0], global_pred_p1[1]])
+                        all_pred_lines.append([global_pred_p0[0], global_pred_p0[1], global_pred_p1[0], global_pred_p1[1]])
+
+                    gt_box_matched_id = line_intersection_check(pred_lines, gt_lines)
+                    gt_line_matched_id = np.ones(len(gt_lines)) * -1
+                    matched_pred_idx = set()
+                    pred_idx_to_category = {}
+                    for gt_idx, matched_pred_indices in enumerate(gt_box_matched_id):
+                        if not matched_pred_indices:
+                            continue
+                        gt_line = gt_lines[gt_idx]
+                        for pred_idx in matched_pred_indices:
+                            pred_line = pred_lines[pred_idx]
+                            try:
+                                ang_diff = line_angle_degrees(gt_line[0:2], gt_line[2:4], pred_line[0:2], pred_line[2:4])
+                            except:
+                                continue
+                            if ang_diff < 10.0:
+                                gt_line_matched_id[gt_idx] = pred_idx
+                                matched_pred_idx.add(pred_idx)
+                                if pred_idx not in pred_idx_to_category:
+                                    pred_idx_to_category[pred_idx] = gt_category_ids[gt_idx]
+
+                    for pred_line_id, pred_line in enumerate(pred_lines):
+                        mask = np.zeros_like(tile['ori_img'][:, :, 0], dtype=np.uint8)
+                        cv2.line(mask, (int(pred_line[0] - tile['x']), int(pred_line[1] - tile['y'])),
+                                       (int(pred_line[2] - tile['x']), int(pred_line[3] - tile['y'])), 1, 30)
+
+                        masked_tile = tile['ori_img'] * mask[:, :, np.newaxis]
+
+                        sub_rt_map, _, _ = compute_rt_map(masked_tile[:, :, 0], max_rho/2, theta_res_deg=itheta, rho_res=irho,
+                                                           rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
+
+                        zero_mask = masked_tile == 0
+                        masked_tile = masked_tile - masked_tile.min()
+                        masked_tile = masked_tile / masked_tile.max() * 255
+                        masked_tile[zero_mask] = 0
+
+                        sub_rt_map = sub_rt_map - sub_rt_map.min()
+                        sub_rt_map = sub_rt_map / sub_rt_map.max() * 255
+                        sub_rt_map = sub_rt_map.astype(np.uint8)
+                        pad_h = (32 - sub_rt_map.shape[0] % 32) % 32
+                        pad_w = (32 - sub_rt_map.shape[1] % 32) % 32
+                        sub_rt_map = cv2.copyMakeBorder(sub_rt_map, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
+                        sub_rt_map = sub_rt_map[:, :, np.newaxis]
+                        sub_rt_map = np.repeat(sub_rt_map, 3, axis=2)
+                        th, tw, _ = sub_rt_map.shape
+
+                        tile_disp   = np.clip(tile['scaled_img'], 0, 255).astype(np.uint8)
+                        masked_disp = np.clip(masked_tile, 0, 255).astype(np.uint8)
+                        rt_disp     = np.clip(tile['rt_map'], 0, 255).astype(np.uint8)
+                        sub_rt_disp = np.clip(sub_rt_map, 0, 255).astype(np.uint8)
+                        streak_disp = cv2.cvtColor(pstreak.astype(np.uint8) * 255, cv2.COLOR_GRAY2BGR)
+
+                        panel_w  = max(tile_disp.shape[1], masked_disp.shape[1], streak_disp.shape[1], rt_disp.shape[1], sub_rt_disp.shape[1])
+                        top_h    = max(tile_disp.shape[0], masked_disp.shape[0], streak_disp.shape[0])
+                        bottom_h = max(rt_disp.shape[0], sub_rt_disp.shape[0])
+
+                        tile_pad    = pad_to_size(tile_disp,    top_h,    panel_w)
+                        masked_pad  = pad_to_size(masked_disp,  top_h,    panel_w)
+                        streak_pad  = pad_to_size(streak_disp,  top_h,    panel_w)
+                        rt_pad      = pad_to_size(rt_disp,      bottom_h, panel_w)
+                        sub_rt_pad  = pad_to_size(sub_rt_disp,  bottom_h, panel_w)
+                        blank_pad   = np.zeros_like(rt_pad)
+
+                        top_row    = cv2.hconcat([tile_pad, masked_pad, streak_pad])
+                        bottom_row = cv2.hconcat([rt_pad, sub_rt_pad, blank_pad])
+                        final_w    = max(top_row.shape[1], bottom_row.shape[1])
+                        top_row    = pad_to_size(top_row,    top_row.shape[0],    final_w)
+                        bottom_row = pad_to_size(bottom_row, bottom_row.shape[0], final_w)
+                        composite  = cv2.vconcat([top_row, bottom_row])
+
+                        save_name     = f"{img_name}_y{tile['y']}_x{tile['x']}_pred{pred_line_id}.png"
+                        save_txt_path = save_name.replace('.png', '.txt')
+
+                        if pred_line_id in matched_pred_idx:
+                            tp_category_id = pred_idx_to_category.get(pred_line_id, -1)
+                            if tp_category_id in category_ids_for_split or tp_category_id == category_for_hard_to_cat:
+                                tp_subdir = str(tp_category_id)
+                                save_path     = os.path.join(tp_dir, tp_subdir, save_name)
+                                save_txt_path = os.path.join(tp_dir, tp_subdir, save_txt_path)
+                            elif tp_category_id == category_for_not_relevant:
+                                continue
+                            elif tp_category_id in [6, 11]:
+                                save_path     = os.path.join(fp_dir, save_name)
+                                save_txt_path = os.path.join(fp_dir, save_txt_path)
+                            else:
+                                save_path     = os.path.join(fp_dir, save_name)
+                                save_txt_path = os.path.join(fp_dir, save_txt_path)
+                        else:
+                            save_path     = os.path.join(fp_dir, save_name)
+                            save_txt_path = os.path.join(fp_dir, save_txt_path)
+
+                        cv2.imwrite(save_path, composite)
+                        with open(save_txt_path, 'a') as f:
+                            f.write(f"{pred_line[0]},{pred_line[1]},{pred_line[2]},{pred_line[3]}\n")
+
+            # ── Full-frame FN detection and save ─────────────────────────
+            if len(gt_lines) > 0:
+                if len(all_pred_lines) > 0:
+                    gt_box_matched_id_full = line_intersection_check(all_pred_lines, gt_lines)
+                else:
+                    gt_box_matched_id_full = [[] for _ in range(len(gt_lines))]
+
+                gt_line_matched_full = np.zeros(len(gt_lines), dtype=bool)
+                for gt_idx, matched_pred_indices in enumerate(gt_box_matched_id_full):
                     if not matched_pred_indices:
-                        continue  # no match
-
+                        continue
                     gt_line = gt_lines[gt_idx]
-                    
-                    # Check all candidate predictions
                     for pred_idx in matched_pred_indices:
-                        pred_line = pred_lines[pred_idx]
-
-                        # compute angle of each line
+                        pred_line = all_pred_lines[pred_idx]
                         try:
                             ang_diff = line_angle_degrees(gt_line[0:2], gt_line[2:4], pred_line[0:2], pred_line[2:4])
-                        except:
+                        except Exception:
                             continue
-
-                        # if ang_diff < 1 degree, a matched is found for the gt line
                         if ang_diff < 10.0:
-                            gt_line_matched_id[gt_idx] = pred_idx
-                            matched_pred_idx.add(pred_idx)
-                            if pred_idx not in pred_idx_to_category:
-                                pred_idx_to_category[pred_idx] = gt_category_ids[gt_idx]
-                            # that is a TP
-                            # save the line pic to a 
-                            
-                for pred_line_id, pred_line in enumerate(pred_lines):
-                    
-                    # mask the tile with the line parameters
-                    # create a mask with global_pred_p0 and global_pred_p1 with a thickness of 10
-                    mask = np.zeros_like(tile['ori_img'][:, :, 0], dtype=np.uint8)
-                    cv2.line(mask, (int(pred_line[0] - tile['x']), int(pred_line[1] - tile['y'])), 
-                                (int(pred_line[2] - tile['x']), int(pred_line[3] - tile['y'])), 1, 30)
-            
-                    masked_tile = tile['ori_img'] * mask[:, :, np.newaxis]
-                    
-                    # compute the RT map for the masked tile
-                    sub_rt_map, _, _ = compute_rt_map(masked_tile[:, :, 0], max_rho/2, theta_res_deg=itheta, rho_res=irho,
-                                                       rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap)
-                    
+                            gt_line_matched_full[gt_idx] = True
+                            break
 
-                    zero_mask = masked_tile == 0
-                    masked_tile = masked_tile - masked_tile.min()
-                    masked_tile = masked_tile / masked_tile.max() * 255
-                    masked_tile[zero_mask] = 0
-                    
-                    sub_rt_map = sub_rt_map - sub_rt_map.min()
-                    sub_rt_map = sub_rt_map / sub_rt_map.max() * 255
-                    sub_rt_map = sub_rt_map.astype(np.uint8)
-                    # pad the rt_map to be divisible by 32
-                    pad_h = (32 - sub_rt_map.shape[0] % 32) % 32
-                    pad_w = (32 - sub_rt_map.shape[1] % 32) % 32
-                    sub_rt_map = cv2.copyMakeBorder(sub_rt_map, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
-                    # pad rt_map to 3 channels
-                    sub_rt_map = sub_rt_map[:, :, np.newaxis]
-                    sub_rt_map = np.repeat(sub_rt_map, 3, axis=2)
-                    th, tw, _ = sub_rt_map.shape
-
-                    # save both the tile, masked tile, RT_map and the RT map corresponding to the masked tile all in one image
-                    tile_disp = np.clip(tile['scaled_img'], 0, 255).astype(np.uint8)
-                    masked_disp = np.clip(masked_tile, 0, 255).astype(np.uint8)
-                    rt_disp = np.clip(tile['rt_map'], 0, 255).astype(np.uint8)
-                    sub_rt_disp = np.clip(sub_rt_map, 0, 255).astype(np.uint8)
-                    streak_disp = (pstreak.astype(np.uint8) * 255)
-                    streak_disp = cv2.cvtColor(streak_disp, cv2.COLOR_GRAY2BGR)
-
-                    # Align individual panels to a common width so rows hconcat cleanly
-                    panel_w = max(tile_disp.shape[1], masked_disp.shape[1], streak_disp.shape[1], rt_disp.shape[1], sub_rt_disp.shape[1])
-                    top_h = max(tile_disp.shape[0], masked_disp.shape[0], streak_disp.shape[0])
-                    bottom_h = max(rt_disp.shape[0], sub_rt_disp.shape[0])
-
-                    tile_pad = pad_to_size(tile_disp, top_h, panel_w)
-                    masked_pad = pad_to_size(masked_disp, top_h, panel_w)
-                    streak_pad = pad_to_size(streak_disp, top_h, panel_w)
-                    rt_pad = pad_to_size(rt_disp, bottom_h, panel_w)
-                    sub_rt_pad = pad_to_size(sub_rt_disp, bottom_h, panel_w)
-                    # blank panel so bottom row matches top row width (3 panels)
-                    blank_pad = np.zeros_like(rt_pad)
-
-                    top_row = cv2.hconcat([tile_pad, masked_pad, streak_pad])
-                    bottom_row = cv2.hconcat([rt_pad, sub_rt_pad, blank_pad])
-
-                    # Ensure rows share width before vconcat
-                    final_w = max(top_row.shape[1], bottom_row.shape[1])
-                    top_row = pad_to_size(top_row, top_row.shape[0], final_w)
-                    bottom_row = pad_to_size(bottom_row, bottom_row.shape[0], final_w)
-
-                    composite = cv2.vconcat([top_row, bottom_row])
-                    # plt.imshow(composite)
-                    # plt.show()
-                    # print('ck')
-                    # plt.close('all')
-
-                    save_name = f"{img_name}_y{tile['y']}_x{tile['x']}_pred{pred_line_id}.png"
-                    save_txt_path = save_name.replace('.png', '.txt')
-                    
-                    if pred_line_id in matched_pred_idx:
-                        tp_category_id = pred_idx_to_category.get(pred_line_id, -1)
-                        # save based on path, if not in any of the interested category, then it is fp
-
-                        if tp_category_id in category_ids_for_split or tp_category_id == category_for_hard_to_cat:
-                            tp_subdir = str(tp_category_id)
-                            save_path = os.path.join(tp_dir, tp_subdir, save_name)
-                            save_txt_path = os.path.join(tp_dir, tp_subdir, save_txt_path)
-                        elif tp_category_id == category_for_not_relevant:
-                            continue
-                        elif tp_category_id in [6, 11]:
-                            save_path = os.path.join(fp_dir, save_name)
-                            save_txt_path = os.path.join(fp_dir, save_txt_path)
-                    else:
-                        save_path = os.path.join(fp_dir, save_name)
-                        save_txt_path = os.path.join(fp_dir, save_txt_path)
-                    
-                    cv2.imwrite(save_path, composite)
-                    
-                    # save the pred_line in a text file
-                    with open(save_txt_path, 'a') as f:
-                        f.write(f"{pred_line[0]},{pred_line[1]},{pred_line[2]},{pred_line[3]}\n")
-
-        
-
-        # Determine false negatives at full-image level (GT lines not matched by any prediction).
-        if len(gt_lines) > 0:
-            if len(all_pred_lines) > 0:
-                gt_box_matched_id_full = line_intersection_check(all_pred_lines, gt_lines)
-            else:
-                gt_box_matched_id_full = [[] for _ in range(len(gt_lines))]
-
-            gt_line_matched_full = np.zeros(len(gt_lines), dtype=bool)
-            for gt_idx, matched_pred_indices in enumerate(gt_box_matched_id_full):
-                if not matched_pred_indices:
-                    continue
-
-                gt_line = gt_lines[gt_idx]
-                for pred_idx in matched_pred_indices:
-                    pred_line = all_pred_lines[pred_idx]
-                    try:
-                        ang_diff = line_angle_degrees(gt_line[0:2], gt_line[2:4], pred_line[0:2], pred_line[2:4])
-                    except Exception:
+                fn_gt_indices = np.where(~gt_line_matched_full)[0]
+                for gt_idx in fn_gt_indices:
+                    gt_line = gt_lines[int(gt_idx)]
+                    fn_category_id = gt_category_ids[int(gt_idx)]
+                    if fn_category_id not in category_ids_for_split and fn_category_id != category_for_hard_to_cat:
                         continue
+                    fn_crop, crop_x0, crop_y0 = crop_line_region_with_min_size(
+                        image_rgb, gt_line, min_size=75, pad=10,
+                    )
+                    fn_subdir    = str(fn_category_id)
+                    fn_save_name = f"{img_name}_gt{int(gt_idx)}_cat{fn_category_id}_fn.png"
+                    fn_save_path = os.path.join(fn_dir, fn_subdir, fn_save_name)
+                    cv2.imwrite(fn_save_path, fn_crop)
 
-                    if ang_diff < 10.0:
-                        gt_line_matched_full[gt_idx] = True
-                        break
+            # ── Full-frame visualisation & line save ──────────────────────
+            all_pred_lines_tuples = [((line[0], line[1]), (line[2], line[3])) for line in all_pred_lines]
+            merged_lines = merge_connected_segments_2d(all_pred_lines_tuples, 1e-6)
 
-            fn_gt_indices = np.where(~gt_line_matched_full)[0]
-            for gt_idx in fn_gt_indices:
-                gt_line = gt_lines[int(gt_idx)]
-                fn_category_id = gt_category_ids[int(gt_idx)]
-
-                if fn_category_id not in category_ids_for_split and fn_category_id != category_for_hard_to_cat:
+            img_scaled_vis = img_scaled.copy()
+            for curr_line, curr_category_id in zip(gt_lines, gt_category_ids):
+                if curr_category_id not in category_ids_for_split:
                     continue
+                cv2.line(img_scaled_vis,
+                         (int(round(curr_line[0])), int(round(curr_line[1]))),
+                         (int(round(curr_line[2])), int(round(curr_line[3]))),
+                         (0, 0, 255), 5)
 
-                fn_crop, crop_x0, crop_y0 = crop_line_region_with_min_size(
-                    image_rgb,
-                    gt_line,
-                    min_size=75,
-                    pad=10,
-                )
-
-
-                fn_subdir = str(fn_category_id)
-                fn_save_name = f"{img_name}_gt{int(gt_idx)}_cat{fn_category_id}_fn.png"
-                fn_save_path = os.path.join(fn_dir, fn_subdir, fn_save_name)
-                cv2.imwrite(fn_save_path, fn_crop)
-
-        # for each of the pred_lines, convert to ((x1, y1), (x2, y2))
-        all_pred_lines = [((line[0], line[1]), (line[2], line[3])) for line in all_pred_lines]
-
-        # write a function to merge lines that are connected to each other
-        merged_lines = merge_connected_segments_2d(all_pred_lines, 1e-6)
-        # merged_mask = lines_to_binary_mask(merged_lines, [img.shape[0], img.shape[1]]).astype(np.uint64)
-        output_image_path = os.path.join(args.output_dir, f"{os.path.splitext(os.path.basename(img_path))[0]}_mask.png")
-        
-        
-        for curr_line, curr_category_id in zip(gt_lines, gt_category_ids):
-            if curr_category_id not in category_ids_for_split:
-                continue
-
-            cv2.line(img_scaled, (int(round(curr_line[0])), int(round(curr_line[1]))), 
-                     (int(round(curr_line[2])), int(round(curr_line[3]))), (0, 0, 255), 5)
-
-        not_relevant_gt_lines = [
-            curr_line
-            for curr_line, curr_category_id in zip(gt_lines, gt_category_ids)
-            if curr_category_id == category_for_not_relevant
-        ]
-
-        # lines_for_full_frame_vis = merged_lines
-        # if len(merged_lines) > 0 and len(not_relevant_gt_lines) > 0:
-        #     merged_lines_xyxy = [[line[0][0], line[0][1], line[1][0], line[1][1]] for line in merged_lines]
-        #     overlaps_with_not_relevant = line_intersection_check(merged_lines_xyxy, not_relevant_gt_lines)
-        #     lines_for_full_frame_vis = [
-        #         line for line, overlap_ids in zip(merged_lines, overlaps_with_not_relevant) if len(overlap_ids) == 0
-        #     ]
-
-        for line in merged_lines:
-            p0, p1 = line
-            cv2.line(img_scaled, (int(p0[0]), int(p0[1])), (int(p1[0]), int(p1[1])), (255, 0, 0), 2)
-            # then blend it with img_scaled
-            # img_scaled = cv2.addWeighted(img_scaled, 0.7, mask, 0.3, 0)
-
-
-        # save the image with lines
-        output_image_path = os.path.join(args.output_dir, 'full_frame_result', 'vis', f"{os.path.splitext(os.path.basename(img_path))[0]}_lines.png")
-        cv2.imwrite(output_image_path, img_scaled)
-
-        # save the merged lines to a text file
-        output_lines_path = os.path.join(args.output_dir, 'full_frame_result', 'txt', f"{os.path.splitext(os.path.basename(img_path))[0]}_lines.txt")
-        with open(output_lines_path, "w") as f:
             for line in merged_lines:
-                f.write(f"{line[0][0]},{line[0][1]},{line[1][0]},{line[1][1]}\n")
+                p0, p1 = line
+                cv2.line(img_scaled_vis, (int(p0[0]), int(p0[1])), (int(p1[0]), int(p1[1])), (255, 0, 0), 2)
 
-        print('done')
+            output_image_path = os.path.join(output_dir, 'full_frame_result', 'vis',
+                                             f"{os.path.splitext(os.path.basename(img_path))[0]}_lines.png")
+            # cv2.imwrite(output_image_path, img_scaled_vis)
+
+            output_lines_path = os.path.join(output_dir, 'full_frame_result', 'txt',
+                                             f"{os.path.splitext(os.path.basename(img_path))[0]}_lines.txt")
+            with open(output_lines_path, "w") as f:
+                for line in merged_lines:
+                    f.write(f"{line[0][0]},{line[0][1]},{line[1][0]},{line[1][1]}\n")
+
+            print(f"  [{model_dir_name}] done: {img_name}")
 
 
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Standalone prediction script for realtime semantic segmentation.")
-    parser.add_argument("--model", type=str, default="litehrnet", help="Model name registered in models/model_registry.")
+    parser = argparse.ArgumentParser(description="Multi-model prediction script for realtime semantic segmentation.")
+    parser.add_argument("--model", type=str, default="bisenetv2dualmaskguidedv2", help="Model name registered in models/model_registry.")
     parser.add_argument("--encoder", type=str, default=None, help="Encoder (only needed if model == smp).")
     parser.add_argument("--decoder", type=str, default=None, help="Decoder (only needed if model == smp).")
-    parser.add_argument("--encoder-weights", type=str, default="imagenet", help="Encoder weights for smp models.")
     parser.add_argument("--num-classes", type=int, default=2, help="Number of segmentation classes.")
     parser.add_argument("--use-aux", action="store_true", help="Set if the checkpoint was trained with auxiliary heads.")
-    parser.add_argument("--ckpt", type=str, required=True, help="Path to checkpoint (.pth) containing state_dict.")
+    parser.add_argument("--model-dirs", type=str, nargs='+', required=True,
+                        help="One or more directories, each containing a checkpoint file.")
+    parser.add_argument("--ckpt-filename", type=str, default="best.pth",
+                        help="Checkpoint filename to look for inside each model-dir (default: best.pth).")
     parser.add_argument("--img-dir", type=str, default=None, help="Directory containing .npy images (for name remap).")
     parser.add_argument("--anno-json", type=str, required=True, help="Path to JSON annotations file.")
-    parser.add_argument("--output-dir", type=str, default="predictions", help="Where to save masks/overlays.")
+    parser.add_argument("--output-root", type=str, default="predictions",
+                        help="Shared output root; per-model results are saved under <output-root>/<model-dir-name>/.")
     parser.add_argument("--device", type=str, default="auto", help="Device string (e.g., cuda, cuda:0, cpu, or auto).")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size for inference.")
     parser.add_argument("--scale", type=float, default=1.0, help="Resize factor applied before normalization.")
@@ -1045,15 +975,4 @@ if __name__ == "__main__":
     else:
         args = argparse.Namespace(**HARD_CONFIG)
 
-    # Grid search for sep_params: [thresh_sigma, minarea, elong_max, r_eff_min, r_eff_max, hough_thresh]
-    param_grid = [
-        [3.0, 6, 6.0, 0.6, 6.0, 0.1]
-    ]
-    
-    original_output_dir = args.output_dir
-    for params in param_grid:
-        param_str = "_".join([str(p) for p in params])
-        args.output_dir = os.path.join(original_output_dir, f"params_{param_str}")
-        args.sep_params = params
-        print(f"\n>>> Running with params: {params} output_dir: {args.output_dir}")
-        run(args)
+    run_multi_model(args)

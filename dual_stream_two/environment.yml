@@ -1,4 +1,4 @@
-name: /home/ckchng/conda_env/rtseg_bw
+name: /hpcfs/users/a1775493/ck/conda_env/dual_stream
 channels:
   - defaults
 dependencies:
@@ -131,4 +131,4 @@ dependencies:
       - wheel==0.43.0
       - yml==0.0.1
       - zipp==3.16.2
-prefix: /home/ckchng/conda_env/rtseg_bw
+prefix: /hpcfs/users/a1775493/ck/conda_env/dual_stream

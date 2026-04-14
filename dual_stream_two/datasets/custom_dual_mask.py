@@ -51,16 +51,16 @@ class CustomDualMask(Dataset):
             data_root2 = os.path.expanduser(config.data_root2)
             img2_dir = os.path.join(data_root2, 'images', mode)
         else:
-            img2_dir = os.path.join(data_root, 'actual_images', mode)
+            img2_dir = os.path.join(data_root, 'raw', mode)
 
-        img_dir = os.path.join(data_root, 'images', mode)
+        img_dir = os.path.join(data_root, 'rt', mode)
 
         # Masks: allow separate root for stream2 masks
-        msk_dir = os.path.join(data_root, 'labels', mode)
+        msk_dir = os.path.join(data_root, 'rt_labels', mode)
         if getattr(config, 'mask_root2', None):
             msk2_dir = os.path.join(os.path.expanduser(config.mask_root2), mode)
         else:
-            msk2_dir = os.path.join(data_root, 'labels2', mode)
+            msk2_dir = os.path.join(data_root, 'raw_labels', mode)
 
         if not os.path.isdir(img_dir):
             raise RuntimeError(f'Image directory: {img_dir} does not exist.')

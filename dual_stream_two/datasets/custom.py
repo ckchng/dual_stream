@@ -54,8 +54,8 @@ class Custom(Dataset):
         # Your actual structure:
         # images/train/
         # labels/train/
-        img_dir = os.path.join(data_root, 'images', mode)
-        msk_dir = os.path.join(data_root, 'labels', mode)
+        img_dir = os.path.join(data_root, 'rt', mode)
+        msk_dir = os.path.join(data_root, 'rt_labels', mode)
 
         if not os.path.isdir(img_dir):
             raise RuntimeError(f'Image directory: {img_dir} does not exist.')

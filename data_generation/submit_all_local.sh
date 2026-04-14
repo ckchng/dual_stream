@@ -10,8 +10,8 @@ INNER_SCRIPT="$SCRIPT_DIR/run_training_data_gen.sh"
 
 STEP=1000
 START=0
-END=30000    # exclusive upper bound
-MAX_JOBS=15   # increase to run N jobs in parallel (be mindful of RAM/CPU)
+END=31000    # exclusive upper bound
+MAX_JOBS=31   # increase to run N jobs in parallel (be mindful of RAM/CPU)
 
 job_count=0
 
