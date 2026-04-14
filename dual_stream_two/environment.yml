@@ -1,4 +1,4 @@
-name: /hpcfs/users/a1775493/ck/conda_env/dual_stream
+name: dual_stream
 channels:
   - defaults
 dependencies:
