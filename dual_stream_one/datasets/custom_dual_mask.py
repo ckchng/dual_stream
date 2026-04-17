@@ -44,21 +44,34 @@ class CustomDualMask(Dataset):
     def __init__(self, config, mode: str = 'train'):
         assert mode in ['train', 'val', 'test'], f"Unsupported mode: {mode}"
 
-        data_root = os.path.expanduser(config.data_root)
+        # Allow per-mode root overrides (e.g. train_data_root / val_data_root)
+        mode_root_key = f'{mode}_data_root'
+        data_root = os.path.expanduser(
+            getattr(config, mode_root_key, None) or config.data_root
+        )
 
         # Images: allow separate root for stream2
-        if getattr(config, 'data_root2', None):
-            data_root2 = os.path.expanduser(config.data_root2)
+        mode_root2_key = f'{mode}_data_root2'
+        if getattr(config, mode_root2_key, None) or getattr(config, 'data_root2', None):
+            raw2 = getattr(config, mode_root2_key, None) or config.data_root2
+            data_root2 = os.path.expanduser(raw2)
             img2_dir = os.path.join(data_root2, 'images', mode)
         else:
             img2_dir = os.path.join(data_root, 'raw', mode)
 
         img_dir = os.path.join(data_root, 'rt', mode)
 
-        # Masks: allow separate root for stream2 masks
-        msk_dir = os.path.join(data_root, 'rt_labels', mode)
-        if getattr(config, 'mask_root2', None):
-            msk2_dir = os.path.join(os.path.expanduser(config.mask_root2), mode)
+        # Masks: allow separate root for stream1 masks
+        mode_mask_key = f'{mode}_mask_root'
+        if getattr(config, mode_mask_key, None) or getattr(config, 'mask_root', None):
+            raw_msk = getattr(config, mode_mask_key, None) or config.mask_root
+            msk_dir = os.path.join(os.path.expanduser(raw_msk), mode)
+        else:
+            msk_dir = os.path.join(data_root, 'rt_labels', mode)
+        mode_mask2_key = f'{mode}_mask_root2'
+        if getattr(config, mode_mask2_key, None) or getattr(config, 'mask_root2', None):
+            raw_msk2 = getattr(config, mode_mask2_key, None) or config.mask_root2
+            msk2_dir = os.path.join(os.path.expanduser(raw_msk2), mode)
         else:
             msk2_dir = os.path.join(data_root, 'raw_labels', mode)
 

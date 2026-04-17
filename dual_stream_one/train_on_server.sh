@@ -13,7 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INNER_SCRIPT="$SCRIPT_DIR/run_train_job.sh"
 
 # ─── Shared settings ───────────────────────────────────────────────────────────
-DATAROOT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200_for_m1/"
+TRAIN_DATAROOT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200_for_m1/"
+VAL_DATAROOT="/hpcfs/users/a1775493/ck/SDA_OTE/val/"
 SAVE_BASE="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class"
 NUM_CLASS=1
 LOSS_TYPE="ohem_bce"
@@ -33,7 +34,7 @@ for cfg in "${CONFIGS[@]}"; do
         total=$((total + 1))
         save_dir="${SAVE_BASE}/${subdir}_run${run}/"
         sbatch \
-            --export=ALL,DATASET="$dataset",MODEL="$model",SAVE_DIR="$save_dir",NUM_CLASS="$NUM_CLASS",LOSS_TYPE="$LOSS_TYPE",DATAROOT="$DATAROOT" \
+            --export=ALL,DATASET="$dataset",MODEL="$model",SAVE_DIR="$save_dir",NUM_CLASS="$NUM_CLASS",LOSS_TYPE="$LOSS_TYPE",TRAIN_DATAROOT="$TRAIN_DATAROOT",VAL_DATAROOT="$VAL_DATAROOT" \
             --job-name="train_${model}_${subdir}_run${run}" \
             "$INNER_SCRIPT"
         echo "Submitted: dataset=${dataset} model=${model} subdir=${subdir} run=${run}"

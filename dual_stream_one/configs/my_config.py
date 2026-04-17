@@ -20,6 +20,7 @@ class MyConfig(BaseConfig):
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_snr_1_15_2_5_new_bg_longer_dimmer/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_snr_1_15_new_bg_w_blobs/'
         
+        
         self.num_class = 1
         self.mean = [0.30566086, 0.30566086, 0.30566086]
         self.std = [0.21072077, 0.21072077, 0.21072077]

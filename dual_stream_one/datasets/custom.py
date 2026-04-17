@@ -49,13 +49,19 @@ class Custom(Dataset):
         """
         assert mode in ['train', 'val', 'test'], f"Unsupported mode: {mode}"
 
-        data_root = os.path.expanduser(config.data_root)
+        mode_root_key = f'{mode}_data_root'
+        data_root = os.path.expanduser(
+            getattr(config, mode_root_key, None) or config.data_root
+        )
 
-        # Your actual structure:
-        # images/train/
-        # labels/train/
+        mode_mask_key = f'{mode}_mask_root'
+        if getattr(config, mode_mask_key, None) or getattr(config, 'mask_root', None):
+            raw_msk = getattr(config, mode_mask_key, None) or config.mask_root
+            msk_dir = os.path.join(os.path.expanduser(raw_msk), mode)
+        else:
+            msk_dir = os.path.join(data_root, 'rt_labels', mode)
+
         img_dir = os.path.join(data_root, 'rt', mode)
-        msk_dir = os.path.join(data_root, 'rt_labels', mode)
 
         if not os.path.isdir(img_dir):
             raise RuntimeError(f'Image directory: {img_dir} does not exist.')

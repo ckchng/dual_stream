@@ -28,6 +28,14 @@ def get_parser():
         help='choose which dataset you want to use')
     parser.add_argument('--dataroot', dest='data_root', type=str, default=None,
         help='path to your dataset')
+    parser.add_argument('--train_dataroot', dest='train_data_root', type=str, default=None,
+        help='path to train dataset (overrides --dataroot for train mode)')
+    parser.add_argument('--val_dataroot', dest='val_data_root', type=str, default=None,
+        help='path to val dataset (overrides --dataroot for val mode)')
+    parser.add_argument('--train_mask_root', dest='train_mask_root', type=str, default=None,
+        help='path to train mask root (overrides default for train mode)')
+    parser.add_argument('--val_mask_root', dest='val_mask_root', type=str, default=None,
+        help='path to val mask root (overrides default for val mode)')
     parser.add_argument('--num_class', type=int, default=None, 
         help='number of classes')
     parser.add_argument('--ignore_index', type=int, default=None, 
