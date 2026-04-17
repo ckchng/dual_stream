@@ -25,6 +25,11 @@ if __name__ == '__main__':
 
     config.init_dependent_config()
 
+    from datasets import get_dataset
+    train_dataset, val_dataset = get_dataset(config)
+    print(f"  train dataset size: {len(train_dataset)}")
+    print(f"  val dataset size:   {len(val_dataset)}")
+
     if config.model == 'bisenetv2dual' or config.dataset == 'customdual':
         trainer = DualSegTrainer(config)
     elif config.model == 'bisenetv2dualmaskguided' or config.dataset == 'customdualmask':
