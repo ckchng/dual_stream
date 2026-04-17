@@ -122,8 +122,8 @@ run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 
 # ── Run 2: SEP=false ─────────────────────────────────────────
 SEP=false
-run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
-run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
+# run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
+# run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 
 echo ""
 echo "Done. Results saved under: $OUTPUT_ROOT"

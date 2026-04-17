@@ -29,6 +29,7 @@ if __name__ == '__main__':
     train_dataset, val_dataset = get_dataset(config)
     print(f"  train dataset size: {len(train_dataset)}")
     print(f"  val dataset size:   {len(val_dataset)}")
+    print(f"  train_bs after get_dataset: {config.train_bs}")
 
     if config.model == 'bisenetv2dual' or config.dataset == 'customdual':
         trainer = DualSegTrainer(config)
