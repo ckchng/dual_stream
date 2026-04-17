@@ -18,6 +18,8 @@ TRAIN_MASK_ROOT="${TRAIN_MASK_ROOT:-}"
 VAL_MASK_ROOT="${VAL_MASK_ROOT:-}"
 DATASET="${DATASET}"
 NUM_CLASS="${NUM_CLASS}"
+TRAIN_BS="${TRAIN_BS}"
+VAL_BS="${VAL_BS}"
 MODEL="${MODEL}"
 LOSS_TYPE="${LOSS_TYPE}"
 SAVE_DIR="${SAVE_DIR}"
@@ -34,6 +36,8 @@ EXTRA_ARGS=()
 "$PYTHON" "$SCRIPT" \
     --dataset   "$DATASET" \
     --num_class "$NUM_CLASS" \
+    --train_bs  "$TRAIN_BS" \
+    --val_bs    "$VAL_BS" \
     --model     "$MODEL" \
     --loss_type "$LOSS_TYPE" \
     --save_dir  "$SAVE_DIR" \

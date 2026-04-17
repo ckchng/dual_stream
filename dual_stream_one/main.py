@@ -12,6 +12,17 @@ if __name__ == '__main__':
     # If you want to use command-line arguments, please uncomment the following line
     config = load_parser(config)
 
+    print("=== Config check ===")
+    print(f"  dataset:        {config.dataset}")
+    print(f"  data_root:      {getattr(config, 'data_root', 'NOT SET')}")
+    print(f"  train_data_root:{getattr(config, 'train_data_root', 'NOT SET')}")
+    print(f"  val_data_root:  {getattr(config, 'val_data_root', 'NOT SET')}")
+    print(f"  train_bs:       {config.train_bs}")
+    print(f"  val_bs:         {config.val_bs}")
+    print(f"  num_class:      {config.num_class}")
+    print(f"  model:          {config.model}")
+    print("====================")
+
     config.init_dependent_config()
 
     if config.model == 'bisenetv2dual' or config.dataset == 'customdual':
