@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-PYTHON="/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python"
+PYTHON="/hpcfs/users/a1775493/ck/conda_env/ds/bin/python"
 SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/dual_stream_one/main.py"
 
 # Receive parameters injected by train_on_server.sh via --export
