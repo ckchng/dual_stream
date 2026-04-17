@@ -21,6 +21,7 @@ def get_loader(config, rank, pin_memory=True):
     train_dataset, val_dataset = get_dataset(config)
 
     # Make sure train number is divisible by train batch size
+    print(f"[get_loader] len(train_dataset)={len(train_dataset)}, train_bs={config.train_bs}")
     config.train_num = int(len(train_dataset) // config.train_bs * config.train_bs)
     config.val_num = len(val_dataset)
 
