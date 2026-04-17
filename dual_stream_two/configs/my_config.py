@@ -8,7 +8,8 @@ class MyConfig(BaseConfig):
         self.task = 'train'
 
         # Dataset
-        self.dataset = 'custom'
+        # self.dataset = 'custom'
+        self.dataset = 'customdualmask'
         self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/'
         
         self.num_class = 1
@@ -17,9 +18,9 @@ class MyConfig(BaseConfig):
     
             
         # Model
-        self.model = 'bisenetv2'
+        # self.model = 'bisenetv2'
         # self.model = 'bisenetv2dualmaskguided'
-        # self.model = 'bisenetv2dualmaskguidedv2'
+        self.model = 'bisenetv2dualmaskguidedv2'
         # self.model = 'bisenetv2dual'
         # self.model = 'bisenetv2dualht'
         # self.model = 'bisenetv2dualhtlastlayer'
@@ -49,7 +50,7 @@ class MyConfig(BaseConfig):
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2_dualht_wo_pad2max/'
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2dualmaskguidedv2/'
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2dualmaskguidedv2_df_bce_init/'
-        self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_32_len_200/single_class/rt_run1/'
+        self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_32_len_200/single_class/both_run1/'
 
         # Validating
         self.val_bs = 100   

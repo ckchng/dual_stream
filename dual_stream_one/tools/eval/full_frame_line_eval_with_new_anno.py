@@ -72,6 +72,7 @@ if __name__ == "__main__":
     pred_dir = '/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/gray_rt_288_snr_1_25_new_bg_longer_dimmer/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'
     pred_dir = '/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'
     pred_dir = '/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both_run2/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'
+    pred_dir = '/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/rt_run5_nosep/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'
     # pred_dir = '/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/both_new_mean/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'
     
     # pred_dir = '/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/rt_only/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt_ang5_dist10.0_eps0.01/txt/'

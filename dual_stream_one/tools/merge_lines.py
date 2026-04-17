@@ -12,14 +12,15 @@ USE_ARGPARSE = False
 HARD_CONFIG = dict(
     # input_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/rt_only/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
     # input_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
-    input_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both_run2/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/txt/",
+    # input_dir="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/both_run5_sep_3_6_6_0.6_6_0.1/full_frame_result/txt/",
+    input_dir="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/rt_run5_sep_3_6_6_0.6_6_0.1/full_frame_result/txt/",
     max_angle=5,    # degrees
     max_dist=10.0,    # pixels
     eps=1e-2,
     img_dir= "/media/ckchng/internal2TB/FILTERED_IMAGES/",
     anno_json= "/home/ckchng/Documents/SDA_ODA/LMA_data/testing_data_label_with_dual_single_stage_and_rt_two_stage_labeled_merged_labels.json",
     # output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes/rt_only/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt",
-    output_dir="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both_run2/single_stage/vis/params_3.0_6_6.0_0.6_6.0_0.1/full_frame_result/merged_txt",
+    output_dir="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/rt_run5_sep_3_6_6_0.6_6_0.1/full_frame_result/merged_txt",
 )
 
 Point = Tuple[float, float]
@@ -400,57 +401,57 @@ def run(args):
              print(f"Error writing {output_path}: {e}")
 
         # Visualization
-        if args.img_dir:
-            # Determine image key
-            txt_basename = os.path.splitext(os.path.basename(file_path))[0]
-            # Try to find matching image, txt file usually end with '_lines'
-            img_key = txt_basename
-            if img_key.endswith('_lines'):
-                img_key = img_key[:-6] # remove _lines
+        # if args.img_dir:
+        #     # Determine image key
+        #     txt_basename = os.path.splitext(os.path.basename(file_path))[0]
+        #     # Try to find matching image, txt file usually end with '_lines'
+        #     img_key = txt_basename
+        #     if img_key.endswith('_lines'):
+        #         img_key = img_key[:-6] # remove _lines
             
-            if img_key in img_paths:
-                img_path = img_paths[img_key]
-                try:
-                    img = np.load(img_path)
+        #     if img_key in img_paths:
+        #         img_path = img_paths[img_key]
+        #         try:
+        #             img = np.load(img_path)
                     
-                    # Normalize and convert to BGR for visualization
-                    img_disp = img.copy()
+        #             # Normalize and convert to BGR for visualization
+        #             img_disp = img.copy()
                     
-                    # Simple min-max normalization to 0-255
-                    v_min, v_max = img_disp.min(), img_disp.max()
-                    if v_max > v_min:
-                        img_disp = (img_disp - v_min) / (v_max - v_min) * 255.0
-                    else:
-                        img_disp = np.zeros_like(img_disp)
+        #             # Simple min-max normalization to 0-255
+        #             v_min, v_max = img_disp.min(), img_disp.max()
+        #             if v_max > v_min:
+        #                 img_disp = (img_disp - v_min) / (v_max - v_min) * 255.0
+        #             else:
+        #                 img_disp = np.zeros_like(img_disp)
                     
-                    img_disp = img_disp.astype(np.uint8)
+        #             img_disp = img_disp.astype(np.uint8)
                     
-                    # If single channel, make it 3 channel
-                    if len(img_disp.shape) == 2:
-                        img_disp = cv2.cvtColor(img_disp, cv2.COLOR_GRAY2BGR)
-                    elif len(img_disp.shape) == 3 and img_disp.shape[2] == 1:
-                        img_disp = cv2.cvtColor(img_disp, cv2.COLOR_GRAY2BGR)
+        #             # If single channel, make it 3 channel
+        #             if len(img_disp.shape) == 2:
+        #                 img_disp = cv2.cvtColor(img_disp, cv2.COLOR_GRAY2BGR)
+        #             elif len(img_disp.shape) == 3 and img_disp.shape[2] == 1:
+        #                 img_disp = cv2.cvtColor(img_disp, cv2.COLOR_GRAY2BGR)
                     
-                    # Draw merged lines
-                    for seg in merged_segments:
-                        p1 = (int(round(seg[0][0])), int(round(seg[0][1])))
-                        p2 = (int(round(seg[1][0])), int(round(seg[1][1])))
-                        cv2.line(img_disp, p1, p2, (255, 0, 0), 2) # Blue lines
+        #             # Draw merged lines
+        #             for seg in merged_segments:
+        #                 p1 = (int(round(seg[0][0])), int(round(seg[0][1])))
+        #                 p2 = (int(round(seg[1][0])), int(round(seg[1][1])))
+        #                 cv2.line(img_disp, p1, p2, (255, 0, 0), 2) # Blue lines
                     
-                    # Draw GT lines if available
-                    if img_key in gt_annotations:
-                         for gt_line in gt_annotations[img_key]:
-                             # gt_line is [x1, y1, x2, y2]
-                             g1 = (int(round(gt_line[0])), int(round(gt_line[1])))
-                             g2 = (int(round(gt_line[2])), int(round(gt_line[3])))
-                             cv2.line(img_disp, g1, g2, (0, 0, 255), 2) # Red lines for GT
+        #             # Draw GT lines if available
+        #             if img_key in gt_annotations:
+        #                  for gt_line in gt_annotations[img_key]:
+        #                      # gt_line is [x1, y1, x2, y2]
+        #                      g1 = (int(round(gt_line[0])), int(round(gt_line[1])))
+        #                      g2 = (int(round(gt_line[2])), int(round(gt_line[3])))
+        #                      cv2.line(img_disp, g1, g2, (0, 0, 255), 2) # Red lines for GT
 
-                    # Save
-                    vis_path = os.path.join(vis_dir, f"{txt_basename}.png")
-                    # cv2.imwrite(vis_path, img_disp)
+        #             # Save
+        #             vis_path = os.path.join(vis_dir, f"{txt_basename}.png")
+        #             # cv2.imwrite(vis_path, img_disp)
                     
-                except Exception as e:
-                    print(f"Error visualizing {img_key}: {e}")
+        #         except Exception as e:
+        #             print(f"Error visualizing {img_key}: {e}")
 
 
     print(f"Successfully processed {count} files.")

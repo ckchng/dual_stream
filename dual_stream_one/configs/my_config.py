@@ -15,15 +15,13 @@ class MyConfig(BaseConfig):
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/testing_gray_rt_272_mask/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_50_bg_for_dht/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_272_75_bg_for_dht/'
-        self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_25/'
+        self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200_for_m1/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_25_wo_borders/streak_only/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_snr_1_15_2_5_new_bg_longer_dimmer/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_snr_1_15_new_bg_w_blobs/'
         
-        self.num_class = 2
-        # self.mean = [0.39509313, 0.39509313, 0.39509313]
+        self.num_class = 1
         self.mean = [0.30566086, 0.30566086, 0.30566086]
-        # self.std = [0.17064099, 0.17064099, 0.17064099]
         self.std = [0.21072077, 0.21072077, 0.21072077]
             
         # Model
@@ -38,7 +36,8 @@ class MyConfig(BaseConfig):
         # Training
         self.total_epoch = 30
         self.train_bs = 100
-        self.loss_type = 'ohem'
+        # self.loss_type = 'ohem'
+        self.loss_type = 'ohem_bce'
         # self.loss_type = 'bce'
         # self.lambda_s2 = 1.0
         
@@ -59,7 +58,7 @@ class MyConfig(BaseConfig):
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2_dualht_wo_pad2max/'
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2dualmaskguidedv2/'
         # self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/bisenetv2dualmaskguidedv2_df_bce_init/'
-        self.save_dir='/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_25/two_classes/both_run3/'
+        self.save_dir='/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/both_run1/'
 
         # Validating
         self.val_bs = 100   

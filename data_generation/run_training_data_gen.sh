@@ -11,23 +11,23 @@ set -euo pipefail
 
 # ph directory
 
-#PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
-#SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
+PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
+SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-#IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
-#OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200/"
+IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
+OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200_for_m1/"
 
 # local directory
 
-PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
-SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
+# PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+# SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
-OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/"
+# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
+# OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200_for_m1/"
 
 
 # ── Range selection ────────────────────────────────────────────────────────────
@@ -35,11 +35,11 @@ OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200/"
 STARTING_ID="${STARTING_ID_OVERRIDE:-0}"
 STEP="${STEP_OVERRIDE:-1000}"
 NUM_ANGLES=192
-NUM_RHOS=288
+NUM_RHOS=416
 
 # ── Rho caps (comment out both lines to disable capping) ──────────────────────
-RHO_MIN_CAP=-144
-RHO_MAX_CAP=143
+#RHO_MIN_CAP=-144
+#RHO_MAX_CAP=143
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
 SNR_MIN_1=1.32;   SNR_MAX_1=2.5
@@ -63,9 +63,9 @@ SCALE_FLAG=1
 LINE_MASK_THICKNESS=3
 
 # ── Build rho-cap args conditionally ──────────────────────────────────────────
-#RHO_ARGS=""
+RHO_ARGS=""
 # Uncomment the two lines below to enable rho capping:
-RHO_ARGS="--rho_min_cap ${RHO_MIN_CAP} --rho_max_cap ${RHO_MAX_CAP}"
+#RHO_ARGS="--rho_min_cap ${RHO_MIN_CAP} --rho_max_cap ${RHO_MAX_CAP}"
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 "$PYTHON" "$SCRIPT" \

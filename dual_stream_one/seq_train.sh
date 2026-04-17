@@ -1,10 +1,10 @@
-#!/bin/bash
-# Sequential training script
-#
-# PREREQUISITE: In main.py, uncomment the load_parser line:
-#   config = load_parser(config)
-#
-# Usage: bash seq_train.sh
+#!/usr/bin/env bash
+#SBATCH -p a100cpu
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --time=48:00:00
+#SBATCH --mem=32GB
+
 
 set -e
 
@@ -21,7 +21,7 @@ LOSS_TYPE="ohem_bce"
 # ─── Configurations ────────────────────────────────────────────────────────────
 # Format: "dataset:model:save_subdir:run_start:run_end"
 CONFIGS=(
-    "customdualmask:bisenetv2dualmaskguidedv2:both:1:5"
+    # "customdualmask:bisenetv2dualmaskguidedv2:both:1:5"
     "custom:bisenetv2:rt:1:5"
 )
 

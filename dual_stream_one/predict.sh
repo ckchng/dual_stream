@@ -11,7 +11,7 @@
 
 # ── Shared base directory ────────────────────────────────────
 SAVE_ROOT="/home/ckchng/Documents/dual_stream/dual_stream_two/save/bg_50_no_crop/snr_1_25_wo_borders/two_classes"
-SAVE_ROOT="/home/ckchng/Documents/realtime-semantic-segmentation-pytorch-main/save/bg_50_no_crop/snr_1_32_len_200/single_class/"
+SAVE_ROOT="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/"
 
 # ── Checkpoint filename & output sub-path ────────────────────
 CKPT_FILENAME="best.pth"
@@ -50,8 +50,9 @@ BATCH_SIZE=128
 
 # ── Preprocessing ────────────────────────────────────────────
 SCALE=1.0
-MEAN="0.39509313 0.39509313 0.39509313"
-STD="0.17064099 0.17064099 0.17064099"
+MEAN="0.30566086 0.30566086 0.30566086"
+STD="0.21072077 0.21072077 0.21072077"
+
 MEAN2="0.34827731 0.34827731 0.34827731"
 STD2="0.16927711 0.16927711 0.16927711"
 
@@ -61,14 +62,14 @@ TILE_STRIDE=144             # overlap = tile_size - tile_stride
 
 # ── RT transform ─────────────────────────────────────────────
 NUM_ANGLES=192
-NUM_RHOS=288
+NUM_RHOS=416
 #RHO_MIN_CAP=-144
 #RHO_MAX_CAP=143
 
 # ── Star/blob separation ─────────────────────────────────────
 SEP=true                    # set to true/false
 # sep_params: thresh_sigma  minarea  elong_max  r_eff_min  r_eff_max  hough_thresh
-SEP_PARAMS="3.0 6 5.5 0.6 6.0 0.1"
+SEP_PARAMS="3.0 6 6.0 0.6 6.0 0.1"
 
 # ── Visualisation ────────────────────────────────────────────
 PALETTE="cityscapes"        # binary | cityscapes | none
@@ -130,4 +131,3 @@ done
 
 echo ""
 echo "All $total checkpoint(s) done."
-

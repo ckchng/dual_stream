@@ -476,7 +476,8 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
                                   max_num_streak, scale_flag,
                                   num_angles, num_rhos,
                                   rho_min_cap=None, rho_max_cap=None, debug=False,
-                                  line_mask_thickness=1):
+                                  line_mask_thickness=1,
+                                  rho_coverage_mask=False):
     """
     Process each image by tiling and adjusting annotations.
     """
@@ -525,6 +526,27 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
         zero_mask = img == 0
         itheta = 180 / num_angles
         max_rho = np.hypot(img.shape[0], img.shape[1]) + 1
+
+        # Pre-compute rho coverage circle mask (applied to spatial image only, not RT map)
+        if rho_coverage_mask:
+            if rho_min_cap is not None and rho_max_cap is not None:
+                _effective_half = (rho_max_cap - rho_min_cap) / 2.0
+            elif rho_max_cap is not None:
+                _effective_half = float(rho_max_cap)
+            elif rho_min_cap is not None:
+                _effective_half = abs(float(rho_min_cap))
+            else:
+                _effective_half = None
+
+            if _effective_half is not None:
+                _h, _w = img.shape[:2]
+                _cx, _cy = _w / 2.0, _h / 2.0
+                _ys, _xs = np.ogrid[:_h, :_w]
+                _outside = np.sqrt((_xs - _cx) ** 2 + (_ys - _cy) ** 2) > _effective_half
+            else:
+                _outside = None
+        else:
+            _outside = None
 
         # When a rho cap is active, spread num_rhos bins over the capped range
         # instead of the full diagonal, keeping irho consistent with _make_params.

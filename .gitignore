@@ -16,3 +16,15 @@ build/
 .DS_Store
 youshallnotpass
 youshallnotpass
+
+# Output directories
+save/
+*vis/
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+*.gif
