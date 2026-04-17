@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INNER_SCRIPT="$SCRIPT_DIR/run_training_data_gen.sh"
 
-STEP=1000
+STEP=0
 START=1000
 END=30000   # exclusive upper bound
 
