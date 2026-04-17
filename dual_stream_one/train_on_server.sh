@@ -21,8 +21,8 @@ LOSS_TYPE="ohem_bce"
 # ─── Configurations ────────────────────────────────────────────────────────────
 # Format: "dataset:model:save_subdir:run_start:run_end"
 CONFIGS=(
-    "customdualmask:bisenetv2dualmaskguidedv2:both:1:5"
-    "custom:bisenetv2:rt:1:5"
+    "customdualmask:bisenetv2dualmaskguidedv2:both:1"
+    "custom:bisenetv2:rt:1"
 )
 
 # ─── Submit ────────────────────────────────────────────────────────────────────
