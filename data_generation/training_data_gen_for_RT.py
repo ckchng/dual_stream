@@ -258,11 +258,13 @@ def lines_to_synth_patch(tile, lines, snr_range, sigma_range, lc_width, max_phi,
                          tile_width, tile_height, snr_ratio, sigma_ratio, scale_flag,
                          zero_mask, ori_min,
                          num_angles, num_rhos, max_rho, irho, itheta,
-                         rho_min_cap=None, rho_max_cap=None, debug=False):
+                         rho_min_cap=None, rho_max_cap=None, debug=False,
+                         gt_mask_mode='box'):
     synth_patch = copy.deepcopy(tile)
 
     remaining_lines = []
     remaining_poly = []
+    remaining_rt_centers = []
     len_stack = []
     snr_stack = []
     sigma_stack = []
@@ -357,6 +359,7 @@ def lines_to_synth_patch(tile, lines, snr_range, sigma_range, lc_width, max_phi,
         y4 = np.minimum(np.maximum((t_id + 10) / num_angles, 0), 1)
 
         remaining_poly.append((x1, y1, x2, y2, x3, y3, x4, y4))
+        remaining_rt_centers.append((r_id, t_id))
         remaining_lines.append((tuple(p0), tuple(p1)))
         len_stack.append(length)
         snr_stack.append(snr)
@@ -400,7 +403,35 @@ def lines_to_synth_patch(tile, lines, snr_range, sigma_range, lc_width, max_phi,
             pt1 = (int(round(line[1][0])), int(round(line[1][1])))
             cv2.line(synth_patch, pt0, pt1, color=255, thickness=1)
 
-    return synth_patch, synth_patch_ori_range, rt_map, remaining_lines, remaining_poly, len_stack, snr_stack, sigma_stack
+    return synth_patch, synth_patch_ori_range, rt_map, remaining_lines, remaining_poly, remaining_rt_centers, len_stack, snr_stack, sigma_stack
+
+def _make_rt_gaussian_mask(rt_centers, num_rhos, num_angles,
+                           sigma_rho=5.0, sigma_theta=5.0):
+    """
+    Generate a float32 Gaussian heatmap in RT space.
+
+    Each entry in rt_centers is (r_id, t_id) in pixel coords of the RT map.
+    Returns a uint8 array (num_angles × num_rhos) with values in [0, 255],
+    where 255 is the peak at each GT (rho, theta) centre.
+    """
+    heatmap = np.zeros((num_angles, num_rhos), dtype=np.float32)
+    if not rt_centers:
+        return heatmap.astype(np.uint8)
+
+    rho_idx = np.arange(num_rhos, dtype=np.float32)
+    theta_idx = np.arange(num_angles, dtype=np.float32)
+    grid_rho, grid_theta = np.meshgrid(rho_idx, theta_idx)  # (num_angles, num_rhos)
+
+    for r_id, t_id in rt_centers:
+        blob = np.exp(
+            -0.5 * ((grid_rho - r_id) ** 2 / (sigma_rho ** 2) +
+                    (grid_theta - t_id) ** 2 / (sigma_theta ** 2))
+        )
+        heatmap = np.maximum(heatmap, blob)
+
+    heatmap = (heatmap * 255).clip(0, 255).astype(np.uint8)
+    return heatmap
+
 
 def _make_line_mask(line_txt_path, img_w, img_h, line_thickness=1):
     """
@@ -477,7 +508,9 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
                                   num_angles, num_rhos,
                                   rho_min_cap=None, rho_max_cap=None, debug=False,
                                   line_mask_thickness=1,
-                                  rho_coverage_mask=False):
+                                  rho_coverage_mask=False,
+                                  gt_mask_mode='box',
+                                  gaussian_sigma_rho=5.0, gaussian_sigma_theta=5.0):
     """
     Process each image by tiling and adjusting annotations.
     """
@@ -615,11 +648,13 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
         # width, height = img.size
         lines = generate_and_trim_lines(width, height, 100, length_range, length_ratio_1, length_ratio_2, max_num_streak, length_min=args.length_min_1)
 
-        synth_patch, _, rt_map, lines, polys, lengths, snrs, sigmas = lines_to_synth_patch(np.array(img), lines, snr_range, sigma_range, lc_width, max_phi,
+        synth_patch, _, rt_map, lines, polys, rt_centers, lengths, snrs, sigmas = lines_to_synth_patch(
+                                                  np.array(img), lines, snr_range, sigma_range, lc_width, max_phi,
                                                   width, height, snr_ratio, sigma_ratio, scale_flag, zero_mask, img_min,
                                                   num_angles, num_rhos, max_rho, irho, itheta,
-                                                  rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap, debug=debug)
-        
+                                                  rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap, debug=debug,
+                                                  gt_mask_mode=gt_mask_mode)
+
         if np.mean(synth_patch) <= 5: # ignore dark patch
             continue
 
@@ -638,15 +673,20 @@ def paste_synth_streak_on_real_bg(filenames, out_img_dir, out_rt_dir,
         line_mask = (line_mask > 0).astype(np.uint8) * 255
         cv2.imwrite(f"{out_line_mask_dir}{stem}.png", line_mask)
 
-        poly_mask = np.zeros((h_rt, w_rt), dtype=np.uint8)
-        for poly in polys:
-            xs = np.array(poly[0::2])
-            ys = np.array(poly[1::2])
-            px = np.clip(np.round(xs * (w_rt - 1)), 0, w_rt - 1).astype(np.int32)
-            py = np.clip(np.round(ys * (h_rt - 1)), 0, h_rt - 1).astype(np.int32)
-            pts = np.stack([px, py], axis=1).reshape((-1, 1, 2))
-            cv2.fillPoly(poly_mask, [pts], color=1)
-        poly_mask = (poly_mask > 0).astype(np.uint8) * 255
+        if gt_mask_mode == 'gaussian':
+            poly_mask = _make_rt_gaussian_mask(rt_centers, num_rhos, num_angles,
+                                               sigma_rho=gaussian_sigma_rho,
+                                               sigma_theta=gaussian_sigma_theta)
+        else:
+            poly_mask = np.zeros((h_rt, w_rt), dtype=np.uint8)
+            for poly in polys:
+                xs = np.array(poly[0::2])
+                ys = np.array(poly[1::2])
+                px = np.clip(np.round(xs * (w_rt - 1)), 0, w_rt - 1).astype(np.int32)
+                py = np.clip(np.round(ys * (h_rt - 1)), 0, h_rt - 1).astype(np.int32)
+                pts = np.stack([px, py], axis=1).reshape((-1, 1, 2))
+                cv2.fillPoly(poly_mask, [pts], color=1)
+            poly_mask = (poly_mask > 0).astype(np.uint8) * 255
         cv2.imwrite(f"{out_poly_mask_dir}{stem}.png", poly_mask)
         
 
@@ -964,6 +1004,9 @@ CONFIG = {
     # Set to a float to clamp the rho axis and ignore border lines, or None for full range
     "debug": False,             # True = draw label polys on RT map and lines on synth patch
     "line_mask_thickness": 5,   # cv2.line thickness when rasterising line masks
+    "gt_mask_mode": "box",      # 'box' = filled polygon GT; 'gaussian' = Gaussian blob heatmap
+    "gaussian_sigma_rho": 5.0,  # Gaussian sigma along rho axis (pixels) when gt_mask_mode='gaussian'
+    "gaussian_sigma_theta": 5.0,# Gaussian sigma along theta axis (pixels) when gt_mask_mode='gaussian'
 }
 
 def _parse_args_or_config():
@@ -1010,6 +1053,10 @@ def _parse_args_or_config():
     parser.add_argument("--rho_max_cap", type=float, default=None, help="Upper rho cap (None = full range)")
     parser.add_argument("--debug", action="store_true", default=False, help="Visualise label polys on RT map and lines on synth patch")
     parser.add_argument("--line_mask_thickness", type=int, default=1, help="Line thickness when rasterising line masks")
+    parser.add_argument("--gt_mask_mode", type=str, default="box", choices=["box", "gaussian"],
+                        help="GT mask type for RT map: 'box' = filled polygon, 'gaussian' = Gaussian blob heatmap")
+    parser.add_argument("--gaussian_sigma_rho", type=float, default=5.0, help="Gaussian sigma along rho axis (pixels)")
+    parser.add_argument("--gaussian_sigma_theta", type=float, default=5.0, help="Gaussian sigma along theta axis (pixels)")
 
     args = parser.parse_args()
     return parser.parse_args()
@@ -1056,7 +1103,9 @@ if __name__ == "__main__":
     rho_max_cap = args.rho_max_cap
     debug = args.debug
     line_mask_thickness = args.line_mask_thickness
-    
+    gt_mask_mode = args.gt_mask_mode
+    gaussian_sigma_rho = args.gaussian_sigma_rho
+    gaussian_sigma_theta = args.gaussian_sigma_theta
 
     print(starting_id, ending_id)
     stats_out_dir = output_dir + '/'+str(starting_id)+'_stats.txt'
@@ -1099,7 +1148,10 @@ if __name__ == "__main__":
                                   max_num_streak, scale_flag,
                                   num_angles, num_rhos,
                                   rho_min_cap=rho_min_cap, rho_max_cap=rho_max_cap, debug=debug,
-                                  line_mask_thickness=line_mask_thickness)
+                                  line_mask_thickness=line_mask_thickness,
+                                  gt_mask_mode=gt_mask_mode,
+                                  gaussian_sigma_rho=gaussian_sigma_rho,
+                                  gaussian_sigma_theta=gaussian_sigma_theta)
     
 
 

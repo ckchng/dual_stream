@@ -117,12 +117,12 @@ run_predict() {
 
 # ── Run 1: SEP=true ──────────────────────────────────────────
 SEP=true
-# run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
+run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
 run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 
 # ── Run 2: SEP=false ─────────────────────────────────────────
 SEP=false
-# run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
+run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
 run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 
 echo ""

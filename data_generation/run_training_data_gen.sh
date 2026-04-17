@@ -11,7 +11,7 @@ set -euo pipefail
 
 # ph directory
 
-PYTHON=/hpcfs/users/a1775493/ck/conda_env/dual_stream/bin/python
+PYTHON=/hpcfs/users/a1775493/ck/conda_env/ds/bin/python
 SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────

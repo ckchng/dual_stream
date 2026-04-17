@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INNER_SCRIPT="$SCRIPT_DIR/run_training_data_gen.sh"
 
 STEP=1000
-START=30000
+START=0
 END=31000   # exclusive upper bound
 
 for starting_id in $(seq "$START" "$STEP" $(( END - STEP ))); do
