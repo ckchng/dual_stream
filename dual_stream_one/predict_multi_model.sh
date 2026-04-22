@@ -13,7 +13,7 @@
 set -e
 
 # ── Shared base directory ────────────────────────────────────
-SAVE_ROOT="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_32_len_200_for_m1/single_class/"
+SAVE_ROOT="/home/ckchng/Documents/dual_stream/dual_stream_one/save/snr_1_275_len_200_for_m1/single_class/"
 
 # ── Checkpoint filename inside each model dir ────────────────
 CKPT_FILENAME="best.pth"
@@ -121,7 +121,7 @@ SEP=true
 run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 
 # ── Run 2: SEP=false ─────────────────────────────────────────
-SEP=false
+# SEP=false
 # run_predict "$BOTH_MODEL" "${BOTH_DIRS[@]}"
 # run_predict "$RT_MODEL"   "${RT_DIRS[@]}"
 

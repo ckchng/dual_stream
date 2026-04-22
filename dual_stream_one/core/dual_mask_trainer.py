@@ -48,10 +48,16 @@ class DualMaskTrainer(SegTrainer):
             images, images2, masks1, masks2 = batch
             images = images.to(self.device, dtype=torch.float32)
             images2 = images2.to(self.device, dtype=torch.float32)
-            masks1 = masks1.to(self.device, dtype=torch.long)
-            masks2 = masks2.to(self.device, dtype=torch.long)
+            _soft = getattr(config, 'soft_mask', False)
+            _mask_dtype = torch.float32 if _soft else torch.long
+            masks1 = masks1.to(self.device, dtype=_mask_dtype)
+            masks2 = masks2.to(self.device, dtype=_mask_dtype)
 
             def _loss_fn(logits, target):
+                if config.num_class == 1 and getattr(config, 'soft_mask', False):
+                    if target.ndim == 3:
+                        target = target.unsqueeze(1)
+                    return self.loss_fn(logits, target)
                 if config.loss_type == 'bce' and config.num_class == 1:
                     target = target.unsqueeze(1).float()
                     return self.loss_fn(logits, target)
@@ -150,16 +156,20 @@ class DualMaskTrainer(SegTrainer):
             images, images2, masks1, masks2 = batch
             images = images.to(self.device, dtype=torch.float32)
             images2 = images2.to(self.device, dtype=torch.float32)
-            masks1 = masks1.to(self.device, dtype=torch.long)
-            masks2 = masks2.to(self.device, dtype=torch.long)
+            _soft = getattr(config, 'soft_mask', False)
+            _mask_dtype = torch.float32 if _soft else torch.long
+            masks1 = masks1.to(self.device, dtype=_mask_dtype)
+            masks2 = masks2.to(self.device, dtype=_mask_dtype)
+            masks1_m = (masks1 > 0.5).long() if _soft else masks1
+            masks2_m = (masks2 > 0.5).long() if _soft else masks2
 
             preds_main, preds_s2 = self.ema_model.ema(images, images2)
 
             if config.num_class == 1:
                 preds_main_bin = (torch.sigmoid(preds_main) > config.pred_threshold).long().squeeze(1)
                 preds_s2_bin = (torch.sigmoid(preds_s2) > config.pred_threshold).long().squeeze(1)
-                metrics_s1.update(preds_main_bin.detach(), masks1)
-                metrics_s2.update(preds_s2_bin.detach(), masks2)
+                metrics_s1.update(preds_main_bin.detach(), masks1_m)
+                metrics_s2.update(preds_s2_bin.detach(), masks2_m)
             else:
                 metrics_s1.update(preds_main.detach(), masks1)
                 metrics_s2.update(preds_s2.detach(), masks2)

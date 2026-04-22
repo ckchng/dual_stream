@@ -90,8 +90,10 @@ def get_parser():
 
     # Loss
     parser.add_argument('--loss_type', type=str, default=None,
-        choices=['ce', 'ohem', 'ohem_bce', 'bce', 'dice_focal'],
+        choices=['ce', 'ohem', 'ohem_bce', 'bce', 'dice_focal', 'focal_mse'],
         help='choose which loss you want to use')
+    parser.add_argument('--soft_mask', action='store_true', default=None,
+        help='load GT mask as soft float [0,1] heatmap instead of binarizing (required for focal_mse)')
     parser.add_argument('--class_weights', type=tuple, default=None, 
         help='class weights for cross entropy loss')
     parser.add_argument('--ohem_thrs', type=float, default=None, 

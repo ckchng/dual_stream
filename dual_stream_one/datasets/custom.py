@@ -49,6 +49,8 @@ class Custom(Dataset):
         """
         assert mode in ['train', 'val', 'test'], f"Unsupported mode: {mode}"
 
+        self.soft_mask = bool(getattr(config, 'soft_mask', False))
+
         mode_root_key = f'{mode}_data_root'
         data_root = os.path.expanduser(
             getattr(config, mode_root_key, None) or config.data_root
@@ -153,7 +155,9 @@ class Custom(Dataset):
         image = augmented['image']      # torch.FloatTensor [3,H,W]
         mask = augmented['mask']        # torch.* [H,W], usually uint8
 
-        # Binary encoding: 0 background, 1 foreground
-        mask = (mask > 0).long()        # torch.LongTensor in {0, 1}
+        if self.soft_mask:
+            mask = mask.float() / 255.0     # torch.FloatTensor in [0, 1]
+        else:
+            mask = (mask > 0).long()        # torch.LongTensor in {0, 1}
 
         return image, mask

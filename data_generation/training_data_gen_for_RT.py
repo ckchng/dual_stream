@@ -976,14 +976,14 @@ CONFIG = {
     "starting_id": 100,
     "step": 100,                                # number of files to take starting from starting_id
     "num_angles": 192,                            # number of angles for Hough Transform
-    #"num_rhos": 416,                              # number of rho values for Hough Transform
-    "num_rhos": 288,
-    "rho_min_cap": -144,
-    "rho_max_cap": 143,
-    #"rho_min_cap": None,
-    #"rho_max_cap": None,
+    "num_rhos": 416,                              # number of rho values for Hough Transform
+    # "num_rhos": 288,
+    # "rho_min_cap": -144,
+    # "rho_max_cap": 143,
+    "rho_min_cap": None,
+    "rho_max_cap": None,
     # Hyperparameters
-    "snr_min_1": 1.32, "snr_max_1": 1.35,
+    "snr_min_1": 1.32, "snr_max_1": 2.5,
     "snr_min_2": 1.25, "snr_max_2": 2.0,
 
     "sigma_min_1": 0.75, "sigma_max_1": 1.3,
@@ -1004,7 +1004,7 @@ CONFIG = {
     # Set to a float to clamp the rho axis and ignore border lines, or None for full range
     "debug": False,             # True = draw label polys on RT map and lines on synth patch
     "line_mask_thickness": 5,   # cv2.line thickness when rasterising line masks
-    "gt_mask_mode": "box",      # 'box' = filled polygon GT; 'gaussian' = Gaussian blob heatmap
+    "gt_mask_mode": "gaussian",      # 'box' = filled polygon GT; 'gaussian' = Gaussian blob heatmap
     "gaussian_sigma_rho": 5.0,  # Gaussian sigma along rho axis (pixels) when gt_mask_mode='gaussian'
     "gaussian_sigma_theta": 5.0,# Gaussian sigma along theta axis (pixels) when gt_mask_mode='gaussian'
 }
@@ -1109,10 +1109,10 @@ if __name__ == "__main__":
 
     print(starting_id, ending_id)
     stats_out_dir = output_dir + '/'+str(starting_id)+'_stats.txt'
-    output_img_dir = output_dir + '/actual_images/train/'
-    output_rt_dir = output_dir + '/images/train/'
-    output_line_mask_dir  = output_dir + '/line_masks/train/'
-    output_poly_mask_dir  = output_dir + '/poly_masks/train/'
+    output_img_dir = output_dir + '/raw/train/'
+    output_rt_dir = output_dir + '/rt/train/'
+    output_line_mask_dir  = output_dir + '/raw_labels/train/'
+    output_poly_mask_dir  = output_dir + '/rt_labels/train/'
 
     if not os.path.exists(output_img_dir):
         # Create the directory if it doesn't exist

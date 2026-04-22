@@ -607,9 +607,17 @@ def run_multi_model(args):
         #     if cat_id == 3: # Assuming 3 is "not relevant" based on category_for_not_relevant
         #         continue
 
-        # if os.path.exists(out_path):
         img_path = str(image_dirs[int_id]['file_name'])
         img_name = os.path.splitext(os.path.basename(img_path))[0]
+
+        pending_models = [
+            info for info in model_dirs_info
+            if not os.path.exists(os.path.join(info[2], 'full_frame_result', 'txt', f"{img_name}_lines.txt"))
+        ]
+        if not pending_models:
+            print(f"Skipping {img_name} (all models already processed)")
+            continue
+
         img = np.load(img_path)
         anno = [anno for anno in annotations if anno['image_id'] == image_dirs[int_id]['id']]
         gt_lines = [a['xyxy'] for a in anno]
@@ -654,7 +662,7 @@ def run_multi_model(args):
                 all_batch_tensors2.append(None)
 
         # ── Run each model independently ──────────────────────────────────────
-        for model_dir_name, model, output_dir, tp_dir, fp_dir, fn_dir in model_dirs_info:
+        for model_dir_name, model, output_dir, tp_dir, fp_dir, fn_dir in pending_models:
             print(f"  [{model_dir_name}] running inference...")
             all_pred_lines = []
 

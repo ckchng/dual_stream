@@ -109,6 +109,37 @@ class OhemBCELoss(nn.Module):
 
 #         return hard.mean()
 
+class FocalMSELoss(nn.Module):
+    """
+    CenterNet-style focal MSE for Gaussian heatmap targets.
+
+    logits : (N, 1, H, W)  raw logits
+    targets: (N, H, W) or (N, 1, H, W)  soft GT in [0, 1]
+
+    loss = (1 - pred)^alpha * gt^2            <- penalise missed peaks
+         + pred^alpha * (1 - gt)^beta          <- penalise false peaks
+    Default alpha=2, beta=4 matches the CenterNet paper.
+    """
+    def __init__(self, alpha: float = 2.0, beta: float = 4.0):
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+
+    def forward(self, logits, targets):
+        if logits.ndim != 4 or logits.shape[1] != 1:
+            raise ValueError(f"FocalMSELoss expects logits of shape (N,1,H,W); got {logits.shape}")
+        if targets.ndim == 3:
+            targets = targets.unsqueeze(1)
+        targets = targets.float()
+
+        pred = torch.sigmoid(logits)
+        pos_loss = torch.pow(1 - pred, self.alpha) * torch.pow(targets, 2)
+        neg_loss = torch.pow(pred, self.alpha) * torch.pow(1 - targets, self.beta)
+        loss = -(pos_loss * torch.log(pred.clamp(min=1e-6))
+                 + neg_loss * torch.log((1 - pred).clamp(min=1e-6)))
+        return loss.mean()
+
+
 class DiceLoss(nn.Module):
     def __init__(self, smooth=1):
         super().__init__()
@@ -428,6 +459,14 @@ def get_loss_fn(config, device):
 
     elif config.loss_type == 'bce':
         criterion = nn.BCEWithLogitsLoss(pos_weight=None if config.dfl_pos_weight is None else torch.as_tensor(config.dfl_pos_weight, device=device))
+
+    elif config.loss_type == 'focal_mse':
+        if config.num_class != 1:
+            raise ValueError("focal_mse is only supported for num_class==1.")
+        criterion = FocalMSELoss(
+            alpha=getattr(config, 'focal_mse_alpha', 2.0),
+            beta=getattr(config, 'focal_mse_beta', 4.0),
+        )
 
     else:
         raise NotImplementedError(f"Unsupport loss type: {config.loss_type}")

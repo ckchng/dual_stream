@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -p batch
+#SBATCH -p a100
 #SBATCH -n 1
 #SBATCH -c 8
 #SBATCH --time=48:00:00

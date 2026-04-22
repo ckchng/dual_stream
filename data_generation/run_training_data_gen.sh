@@ -11,23 +11,23 @@ set -euo pipefail
 
 # ph directory
 
-PYTHON=/hpcfs/users/a1775493/ck/conda_env/ds/bin/python
-SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
+# PYTHON=/hpcfs/users/a1775493/ck/conda_env/ds/bin/python
+# SCRIPT="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
 # IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
-OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200_for_m1/"
+# IMG_DIR=/hpcfs/users/a1775493/ck/SDA_OTE/bg_data/
+# OUTPUT_DIR="/hpcfs/users/a1775493/ck/SDA_OTE/dual_stream/data/snr_1_32_len_200_for_m1/"
 
 # local directory
 
-# PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
-# SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
+PYTHON=/home/ckchng/conda_env/pose_estimation/bin/python
+SCRIPT="/home/ckchng/Documents/dual_stream/data_generation/training_data_gen_for_RT.py"
 
 # ── IO ─────────────────────────────────────────────────────────────────────────
-# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model"
-# IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
-# OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200_for_m1/"
+
+IMG_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/background_patches_with_new_model/"
+OUTPUT_DIR="/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_275_len_200_for_m1/"
 
 
 # ── Range selection ────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ NUM_RHOS=416
 #RHO_MAX_CAP=143
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
-SNR_MIN_1=1.32;   SNR_MAX_1=2.5
+SNR_MIN_1=1.275;   SNR_MAX_1=2.5
 SNR_MIN_2=1.25;  SNR_MAX_2=2.0
 
 SIGMA_MIN_1=0.75; SIGMA_MAX_1=1.3
@@ -61,6 +61,11 @@ LC_WIDTH=3
 MAX_NUM_STREAK=1
 SCALE_FLAG=1
 LINE_MASK_THICKNESS=3
+
+# ── GT mask mode: 'box' (default) or 'gaussian' ───────────────────────────────
+GT_MASK_MODE=box
+GAUSSIAN_SIGMA_RHO=5.0
+GAUSSIAN_SIGMA_THETA=5.0
 
 # ── Build rho-cap args conditionally ──────────────────────────────────────────
 RHO_ARGS=""
@@ -96,5 +101,8 @@ RHO_ARGS=""
     --lc_width       "$LC_WIDTH" \
     --max_num_streak "$MAX_NUM_STREAK" \
     --scale_flag     "$SCALE_FLAG" \
-    --line_mask_thickness "$LINE_MASK_THICKNESS" \
+    --line_mask_thickness    "$LINE_MASK_THICKNESS" \
+    --gt_mask_mode           "$GT_MASK_MODE" \
+    --gaussian_sigma_rho     "$GAUSSIAN_SIGMA_RHO" \
+    --gaussian_sigma_theta   "$GAUSSIAN_SIGMA_THETA" \
     $RHO_ARGS

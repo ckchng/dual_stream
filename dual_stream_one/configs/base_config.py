@@ -57,6 +57,9 @@ class BaseConfig:
         self.dfl_gamma = 2.0
         self.dfl_eps = 1e-6
         self.dfl_pos_weight = None
+        self.focal_mse_alpha = 2.0      # exponent on (1-pred) and pred terms in FocalMSELoss
+        self.focal_mse_beta = 4.0       # exponent on (1-gt) for negative pixels in FocalMSELoss
+        self.soft_mask = False          # if True, dataset loads GT as float [0,1] (for Gaussian heatmaps)
 
         # Scheduler
         self.lr_policy = 'cos_warmup'

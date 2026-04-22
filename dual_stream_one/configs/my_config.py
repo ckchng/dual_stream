@@ -12,7 +12,7 @@ class MyConfig(BaseConfig):
         # self.dataset = 'custom'
         self.dataset = 'customdualmask'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_272_mask/'
-        # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/testing_gray_rt_272_mask/'
+        # self.data_root =t '/home/ckchng/Documents/SDA_ODA/LMA_data/testing_gray_rt_272_mask/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_288_50_bg_for_dht/'
         # self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/gray_rt_272_75_bg_for_dht/'
         self.data_root = '/home/ckchng/Documents/SDA_ODA/LMA_data/snr_1_32_len_200_for_m1/'

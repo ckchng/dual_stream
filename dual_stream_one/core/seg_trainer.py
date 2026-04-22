@@ -42,9 +42,14 @@ class SegTrainer(BaseTrainer):
             self.train_itrs += 1
 
             images = images.to(self.device, dtype=torch.float32)
-            masks = masks.to(self.device, dtype=torch.long)    
+            _soft = getattr(config, 'soft_mask', False)
+            masks = masks.to(self.device, dtype=torch.float32 if _soft else torch.long)
 
             def _loss_fn(logits, target):
+                if config.num_class == 1 and getattr(config, 'soft_mask', False):
+                    if target.ndim == 3:
+                        target = target.unsqueeze(1)
+                    return self.loss_fn(logits, target)
                 if config.loss_type == 'bce' and config.num_class == 1:
                     target = target.unsqueeze(1).float()
                     return self.loss_fn(logits, target)
@@ -176,11 +181,13 @@ class SegTrainer(BaseTrainer):
         pbar = tqdm(self.val_loader) if self.main_rank else self.val_loader
         for (images, masks) in pbar:
             images = images.to(self.device, dtype=torch.float32)
-            masks = masks.to(self.device, dtype=torch.long)
+            _soft = getattr(config, 'soft_mask', False)
+            masks = masks.to(self.device, dtype=torch.float32 if _soft else torch.long)
 
             preds = self.ema_model.ema(images)
             preds_for_metrics = preds.detach().squeeze(1) if preds.shape[1] == 1 else preds.detach()
-            self.metrics.update(preds_for_metrics, masks)
+            masks_for_metrics = (masks > 0.5).long() if _soft else masks
+            self.metrics.update(preds_for_metrics, masks_for_metrics)
 
             if self.main_rank:
                 pbar.set_description(('%s'*1) % (f'Validating:{" "*4}|',))
